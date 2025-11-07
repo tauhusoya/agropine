@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'screens/authentication_screen.dart';
+import 'screens/profile_page.dart';
 
 void main() {
   runApp(const MainApp());
@@ -15,7 +16,7 @@ class MainApp extends StatelessWidget {
       title: 'Agropine',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home: const AuthenticationScreen(),
+      home: AuthenticationScreen(),
     );
   }
 }

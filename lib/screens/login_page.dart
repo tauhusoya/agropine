@@ -6,6 +6,7 @@ import '../widgets/animations.dart';
 import '../utils/input_validators.dart';
 import '../services/google_sign_in_service.dart';
 
+
 class LoginPage extends StatefulWidget {
   final VoidCallback onSwitchToRegister;
   final VoidCallback onForgotPassword;
