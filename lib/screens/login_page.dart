@@ -7,6 +7,7 @@ import '../utils/input_validators.dart';
 import '../utils/form_validation_state.dart';
 import '../services/firebase_auth_service.dart';
 
+
 class LoginPage extends StatefulWidget {
   final VoidCallback onSwitchToRegister;
   final VoidCallback onForgotPassword;
