@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/custom_button.dart';
 import '../widgets/password_strength_indicator.dart';
-import '../widgets/app_logo.dart';
 import '../widgets/animations.dart';
 import '../utils/input_validators.dart';
-import '../services/google_sign_in_service.dart';
+import '../services/firebase_auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
   final VoidCallback onSwitchToLogin;
+  final VoidCallback? onBackToLanding;
 
   const RegisterPage({
     super.key,
     required this.onSwitchToLogin,
+    this.onBackToLanding,
   });
 
   @override
@@ -20,26 +22,41 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  late TextEditingController _nameController;
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNameController;
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
   late TextEditingController _confirmPasswordController;
   bool _agreedToTerms = false;
   bool _isLoading = false;
-  final _googleSignInService = GoogleSignInService();
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
+    _firstNameController = TextEditingController();
+    _lastNameController = TextEditingController();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
+    
+    _firstNameController.addListener(_updateValidationState);
+    _lastNameController.addListener(_updateValidationState);
+    _emailController.addListener(_updateValidationState);
+    _passwordController.addListener(_updateValidationState);
+    _confirmPasswordController.addListener(_updateValidationState);
+  }
+
+  void _updateValidationState() {
+    setState(() {
+      _errorMessage = null;
+    });
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -53,7 +70,15 @@ class _RegisterPageState extends State<RegisterPage> {
     final verticalPadding = isSmallScreen ? 32.0 : 48.0;
     final maxWidth = isSmallScreen ? double.infinity : 500.0;
 
-    return SingleChildScrollView(
+    return WillPopScope(
+      onWillPop: () async {
+        if (widget.onBackToLanding != null) {
+          widget.onBackToLanding!();
+          return false; // Prevent default back behavior
+        }
+        return true; // Allow default back behavior if no callback
+      },
+      child: SingleChildScrollView(
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
@@ -66,15 +91,36 @@ class _RegisterPageState extends State<RegisterPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 24),
-                // Logo
-                Center(
-                  child: AppLogo(
-                    size: 80,
-                    isHero: true,
-                    tag: 'register_logo',
+                // Error Message Display
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.errorRed.withValues(alpha: 0.1),
+                      border: Border.all(color: AppTheme.errorRed),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    margin: const EdgeInsets.only(bottom: 24),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: AppTheme.errorRed,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: AppTheme.errorRed,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 32),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -89,20 +135,40 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
             StaggeredFadeInWidget(
               itemDelay: const Duration(milliseconds: 150),
               children: [
                 CustomTextField(
-                  label: 'Full Name',
-                  hint: 'Enter your full name',
-                  controller: _nameController,
+                  label: 'First Name',
+                  hint: 'Enter your first name',
+                  controller: _firstNameController,
                   keyboardType: TextInputType.name,
                   prefixIcon: Icons.person_outlined,
-                  validator: InputValidators.validateFullName,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'First name is required';
+                    }
+                    return null;
+                  },
+                  enabled: !_isLoading,
                 ),
                 const SizedBox(height: 24),
-                // Email Field
+                CustomTextField(
+                  label: 'Last Name',
+                  hint: 'Enter your last name',
+                  controller: _lastNameController,
+                  keyboardType: TextInputType.name,
+                  prefixIcon: Icons.person_outlined,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Last name is required';
+                    }
+                    return null;
+                  },
+                  enabled: !_isLoading,
+                ),
+                const SizedBox(height: 24),
                 CustomTextField(
                   label: 'Email Address',
                   hint: 'Enter your email',
@@ -110,6 +176,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   keyboardType: TextInputType.emailAddress,
                   prefixIcon: Icons.email_outlined,
                   validator: InputValidators.validateEmail,
+                  enabled: !_isLoading,
                 ),
                 const SizedBox(height: 24),
                 // Password Field
@@ -120,6 +187,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   prefixIcon: Icons.lock_outlined,
                   isPassword: true,
                   validator: InputValidators.validatePassword,
+                  enabled: !_isLoading,
                 ),
                 const SizedBox(height: 8),
                 // Password Strength Indicator
@@ -140,6 +208,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       _passwordController.text,
                     );
                   },
+                  enabled: !_isLoading,
                 ),
               ],
             ),
@@ -183,23 +252,11 @@ class _RegisterPageState extends State<RegisterPage> {
               onTap: (_isLoading || !_agreedToTerms) ? null : _handleRegister,
               child: Tooltip(
                 message: 'Click to create your new account',
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: (_isLoading || !_agreedToTerms) ? null : _handleRegister,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppTheme.textDark,
-                              ),
-                            ),
-                          )
-                        : const Text('Create Account'),
-                  ),
+                child: CustomButton(
+                  label: 'Create Account',
+                  onPressed: _handleRegister,
+                  isLoading: _isLoading,
+                  isEnabled: _agreedToTerms,
                 ),
               ),
             ),
@@ -213,27 +270,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     color: AppTheme.borderColor,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Or sign up with',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    height: 1,
-                    color: AppTheme.borderColor,
-                  ),
-                ),
               ],
-            ),
-            const SizedBox(height: 24),
-            Center(
-              child: SizedBox(
-                width: double.infinity,
-                child: _buildGoogleButton(),
-              ),
             ),
             const SizedBox(height: 32),
             Semantics(
@@ -257,69 +294,18 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
           ],
-            ),
+          ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildGoogleButton() {
-    return Semantics(
-      label: 'Sign up with Google button',
-      button: true,
-      enabled: !_isLoading,
-      onTap: _isLoading ? null : _handleGoogleSignUp,
-      child: Tooltip(
-        message: 'Click to sign up using your Google account',
-        child: OutlinedButton(
-          onPressed: _isLoading ? null : _handleGoogleSignUp,
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            side: const BorderSide(color: AppTheme.borderColor),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGold),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: Image.network(
-                        'https://www.gstatic.com/images/branding/product/1x/googleg_standard_color_128dp.png',
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Text('G');
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Continue with Google',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ],
-                ),
-        ),
       ),
     );
   }
 
   Future<void> _handleRegister() async {
-    // Validate all fields with proper validators
-    final nameError = InputValidators.validateFullName(_nameController.text);
+    // Validate all fields
+    final firstNameError = _firstNameController.text.isEmpty ? 'First name is required' : null;
+    final lastNameError = _lastNameController.text.isEmpty ? 'Last name is required' : null;
     final emailError = InputValidators.validateEmail(_emailController.text);
     final passwordError = InputValidators.validatePassword(_passwordController.text);
     final confirmError = InputValidators.validatePasswordConfirmation(
@@ -328,95 +314,61 @@ class _RegisterPageState extends State<RegisterPage> {
     );
 
     // Show first error encountered
-    if (nameError != null || emailError != null || passwordError != null || confirmError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(nameError ?? emailError ?? passwordError ?? confirmError ?? 'Validation error'),
-          backgroundColor: AppTheme.errorRed,
-        ),
-      );
+    final errorMessage = firstNameError ?? lastNameError ?? emailError ?? passwordError ?? confirmError;
+    if (errorMessage != null) {
+      setState(() {
+        _errorMessage = errorMessage;
+      });
       return;
     }
 
     if (!_agreedToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please agree to the terms and conditions'),
-          backgroundColor: AppTheme.errorRed,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Please agree to the terms and conditions';
+      });
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
-      // TODO: Replace with actual API call
-      // Example: await _authService.register(...)
-      await Future.delayed(const Duration(seconds: 2));
+      final firebaseAuthService = FirebaseAuthService();
+      await firebaseAuthService.registerWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        accountType: 'individual',
+        businessNumber: null,
+      );
 
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Account created successfully!'),
             backgroundColor: AppTheme.lightGreen,
           ),
         );
-        // TODO: Navigate to login or home page
+        // Navigation to dashboard will be handled by auth state changes
+        widget.onSwitchToLogin();
       }
     } catch (e) {
       if (mounted) {
         setState(() {
+          _errorMessage = e.toString();
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Registration failed: ${e.toString()}'),
-            backgroundColor: AppTheme.errorRed,
-          ),
-        );
       }
-    }
-  }
-
-  Future<void> _handleGoogleSignUp() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final user = await _googleSignInService.signIn();
-      if (user != null) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Welcome, ${user.displayName}!'),
-              backgroundColor: AppTheme.lightGreen,
-            ),
-          );
-          // TODO: Navigate to home page or complete registration
-        }
-      }
-    } catch (e) {
+    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign-Up failed: ${e.toString()}'),
-            backgroundColor: AppTheme.errorRed,
-          ),
-        );
       }
     }
   }
 }
+

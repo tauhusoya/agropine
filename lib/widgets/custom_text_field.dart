@@ -12,6 +12,8 @@ class CustomTextField extends StatefulWidget {
   final int maxLines;
   final ValueChanged<String>? onChanged;
   final bool readOnly;
+  final bool enabled;
+  final String? helperText;
 
   const CustomTextField({
     super.key,
@@ -25,6 +27,8 @@ class CustomTextField extends StatefulWidget {
     this.maxLines = 1,
     this.onChanged,
     this.readOnly = false,
+    this.enabled = true,
+    this.helperText,
   });
 
   @override
@@ -81,7 +85,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
           keyboardType: widget.keyboardType,
           obscureText: _obscureText,
           maxLines: widget.isPassword ? 1 : widget.maxLines,
-          readOnly: widget.readOnly,
+          readOnly: widget.readOnly || !widget.enabled,
+          enabled: widget.enabled,
           onChanged: (value) {
             _validateField();
             widget.onChanged?.call(value);
@@ -94,6 +99,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           },
           decoration: InputDecoration(
             hintText: widget.hint,
+            helperText: widget.helperText,
             prefixIcon: widget.prefixIcon != null
                 ? Icon(widget.prefixIcon)
                 : null,
@@ -104,7 +110,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                           ? Icons.visibility_off
                           : Icons.visibility,
                     ),
-                    onPressed: _togglePasswordVisibility,
+                    onPressed: widget.enabled ? _togglePasswordVisibility : null,
                   )
                 : null,
             errorText: _touched ? _errorText : null,
@@ -122,6 +128,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 color: _touched && _errorText != null
                     ? AppTheme.errorRed
                     : AppTheme.borderColor,
+              ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: AppTheme.borderColor.withValues(alpha: 0.5),
               ),
             ),
             focusedBorder: OutlineInputBorder(

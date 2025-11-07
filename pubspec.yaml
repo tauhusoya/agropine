@@ -11,6 +11,10 @@ dependencies:
     sdk: flutter
   google_fonts: ^6.3.2
   google_sign_in: ^6.1.0
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0
+  cloud_firestore: ^5.0.0
+  geolocator: ^11.0.0
 
 dev_dependencies:
   flutter_test:
@@ -32,3 +36,4 @@ flutter:
           weight: 700
   assets:
     - assets/images/logo.png
+    - assets/images/landing_image.png

@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_text_field.dart';
-import '../widgets/app_logo.dart';
+import '../widgets/custom_button.dart';
 import '../widgets/animations.dart';
 import '../utils/input_validators.dart';
-import '../services/google_sign_in_service.dart';
+import '../utils/form_validation_state.dart';
+import '../services/firebase_auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback onSwitchToRegister;
   final VoidCallback onForgotPassword;
+  final VoidCallback? onBackToLanding;
 
   const LoginPage({
     super.key,
     required this.onSwitchToRegister,
     required this.onForgotPassword,
+    this.onBackToLanding,
   });
 
   @override
@@ -25,20 +28,39 @@ class _LoginPageState extends State<LoginPage> {
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
   bool _isLoading = false;
-  final _googleSignInService = GoogleSignInService();
+  String? _errorMessage;
+  late LoginFormValidationState _validationState;
 
   @override
   void initState() {
     super.initState();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
+    _validationState = LoginFormValidationState(
+      isEmailValid: false,
+      isPasswordValid: false,
+    );
+    _emailController.addListener(_updateValidationState);
+    _passwordController.addListener(_updateValidationState);
   }
 
   @override
   void dispose() {
+    _emailController.removeListener(_updateValidationState);
+    _passwordController.removeListener(_updateValidationState);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _updateValidationState() {
+    setState(() {
+      _validationState = LoginFormValidationState(
+        isEmailValid: InputValidators.validateEmail(_emailController.text) == null,
+        isPasswordValid: _passwordController.text.isNotEmpty,
+      );
+      _errorMessage = null;
+    });
   }
 
   @override
@@ -48,8 +70,16 @@ class _LoginPageState extends State<LoginPage> {
     final verticalPadding = isSmallScreen ? 32.0 : 48.0;
     final maxWidth = isSmallScreen ? double.infinity : 500.0;
 
-    return SingleChildScrollView(
-      child: Center(
+    return WillPopScope(
+      onWillPop: () async {
+        if (widget.onBackToLanding != null) {
+          widget.onBackToLanding!();
+          return false; // Prevent default back behavior
+        }
+        return true; // Allow default back behavior if no callback
+      },
+      child: SingleChildScrollView(
+        child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
           child: Padding(
@@ -63,17 +93,20 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 24),
-                  // Logo
-                  Center(
-                    child: AppLogo(
-                      size: 80,
-                      isHero: true,
-                      tag: 'login_logo',
+                  // Back Button
+                  if (widget.onBackToLanding != null)
+                    GestureDetector(
+                      onTap: widget.onBackToLanding,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppTheme.borderColor),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.arrow_back, size: 20),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  // Header
+                  const SizedBox(height: 24),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -89,6 +122,36 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                   const SizedBox(height: 40),
+                  // Error Message Display
+                  if (_errorMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.errorRed.withValues(alpha: 0.1),
+                        border: Border.all(color: AppTheme.errorRed),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppTheme.errorRed,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.errorRed,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 24),
                   // Form Fields with Staggered Animation
                   StaggeredFadeInWidget(
                     itemDelay: const Duration(milliseconds: 150),
@@ -101,6 +164,7 @@ class _LoginPageState extends State<LoginPage> {
                         keyboardType: TextInputType.emailAddress,
                         prefixIcon: Icons.email_outlined,
                         validator: InputValidators.validateEmail,
+                        enabled: !_isLoading,
                       ),
                       const SizedBox(height: 24),
                       // Password Field
@@ -116,6 +180,7 @@ class _LoginPageState extends State<LoginPage> {
                           }
                           return null;
                         },
+                        enabled: !_isLoading,
                       ),
                     ],
                   ),
@@ -139,59 +204,16 @@ class _LoginPageState extends State<LoginPage> {
                   Semantics(
                     label: 'Sign in button',
                     button: true,
-                    enabled: !_isLoading,
-                    onTap: _isLoading ? null : _handleLogin,
+                    enabled: !_isLoading && _validationState.isFormValid,
+                    onTap: (!_isLoading && _validationState.isFormValid) ? _handleLogin : null,
                     child: Tooltip(
                       message: 'Click to sign in with your email and password',
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      AppTheme.textDark,
-                                    ),
-                                  ),
-                                )
-                              : const Text('Sign In'),
-                        ),
+                      child: CustomButton(
+                        label: 'Sign In',
+                        onPressed: _handleLogin,
+                        isLoading: _isLoading,
+                        isEnabled: _validationState.isFormValid,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: AppTheme.borderColor,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Or continue with',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: AppTheme.borderColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: _buildGoogleButton(),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -221,103 +243,62 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildGoogleButton() {
-    return Semantics(
-      label: 'Sign in with Google button',
-      button: true,
-      enabled: !_isLoading,
-      onTap: _isLoading ? null : _handleGoogleSignIn,
-      child: Tooltip(
-        message: 'Click to sign in using your Google account',
-        child: OutlinedButton(
-          onPressed: _isLoading ? null : _handleGoogleSignIn,
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            side: const BorderSide(color: AppTheme.borderColor),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGold),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: Image.network(
-                        'https://www.gstatic.com/images/branding/product/1x/googleg_standard_color_128dp.png',
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Text('G');
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Continue with Google',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ],
-                ),
-        ),
       ),
     );
   }
 
   Future<void> _handleLogin() async {
-    // Validate form fields using FormState
-    final form = _formKey.currentState;
-    if (form == null || !form.validate()) {
-      // Only show a general error if needed, not per-field
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please fix the errors in red.'),
-            backgroundColor: AppTheme.errorRed,
-          ),
-        );
-      }
+    if (!_validationState.isFormValid) {
+      setState(() {
+        _errorMessage = 'Please fill in all required fields';
+      });
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(seconds: 2));
+      final firebaseAuthService = FirebaseAuthService();
+      final userCredential = await firebaseAuthService.loginWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login successful!'),
+          SnackBar(
+            content: Text('Welcome ${userCredential.user?.displayName ?? 'back'}!'),
             backgroundColor: AppTheme.lightGreen,
           ),
         );
+        // Navigation to dashboard will be handled by auth state changes
       }
-      // jsjsjs
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Login failed: ${e.toString()}'),
-            backgroundColor: AppTheme.errorRed,
-          ),
-        );
+        String errorMessage = e.toString();
+        
+        // Check if it's a "user not found" error, which might mean they signed up with Google
+        if (errorMessage.contains('user-not-found') || 
+            errorMessage.contains('wrong-password') ||
+            errorMessage.contains('invalid-credential')) {
+          // Offer to set password for Google accounts
+          _showSetPasswordDialog(
+            email: _emailController.text.trim(),
+            errorMessage: errorMessage,
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+        
+        setState(() {
+          _errorMessage = errorMessage;
+          _isLoading = false;
+        });
       }
     } finally {
       if (mounted) {
@@ -328,37 +309,155 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    setState(() {
-      _isLoading = true;
-    });
+  void _showSetPasswordDialog({
+    required String email,
+    required String errorMessage,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('No Password Set'),
+        content: const Text(
+          'It looks like you registered with Google Sign-In. '
+          'Would you like to set a password so you can also log in with email?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Not Now'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showSetPasswordForm(email);
+            },
+            child: const Text('Set Password'),
+          ),
+        ],
+      ),
+    );
+  }
 
-    try {
-      final account = await _googleSignInService.signIn();
-      if (account != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Welcome ${account.displayName}!'),
-            backgroundColor: AppTheme.lightGreen,
+  void _showSetPasswordForm(String email) {
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    String? errorMessage;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Set Password'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Set a password for $email',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                if (errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      errorMessage!,
+                      style: TextStyle(
+                        color: AppTheme.errorRed,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Confirm Password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-        // TODO: Replace with actual authentication flow
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google sign-in failed: ${e.toString()}'),
-            backgroundColor: AppTheme.errorRed,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+          actions: [
+            TextButton(
+              onPressed: () {
+                passwordController.dispose();
+                confirmPasswordController.dispose();
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final password = passwordController.text;
+                final confirmPassword = confirmPasswordController.text;
+
+                if (password.isEmpty || confirmPassword.isEmpty) {
+                  setState(() {
+                    errorMessage = 'Both fields are required';
+                  });
+                  return;
+                }
+
+                if (password != confirmPassword) {
+                  setState(() {
+                    errorMessage = 'Passwords do not match';
+                  });
+                  return;
+                }
+
+                if (password.length < 6) {
+                  setState(() {
+                    errorMessage = 'Password must be at least 6 characters';
+                  });
+                  return;
+                }
+
+                try {
+                  // First sign in with Google to get the current user
+                  // Need to sign in with Google first, then set password
+                  setState(() {
+                    errorMessage = 'Please sign in with Google first';
+                  });
+                  
+                  passwordController.dispose();
+                  confirmPasswordController.dispose();
+                  Navigator.pop(context);
+                  
+                  // Show message
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please sign in with Google first, then you can set a password'),
+                        backgroundColor: AppTheme.primaryGold,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  setState(() {
+                    errorMessage = e.toString();
+                  });
+                }
+              },
+              child: const Text('Set Password'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
