@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firebase_auth_service.dart';
+import 'landing_page.dart';
 import 'login_page.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
+import 'dashboard_page.dart';
 
 class AuthenticationScreen extends StatefulWidget {
   const AuthenticationScreen({super.key});
@@ -11,65 +15,133 @@ class AuthenticationScreen extends StatefulWidget {
 }
 
 class _AuthenticationScreenState extends State<AuthenticationScreen> {
-  int _currentScreenIndex = 0; // 0: Login, 1: Register, 2: Forgot Password
+  int _currentScreenIndex = 0;
+  late FirebaseAuthService _firebaseAuthService;
+
+  @override
+  void initState() {
+    super.initState();
+    _firebaseAuthService = FirebaseAuthService();
+  }
 
   void _switchToRegister() {
-    setState(() {
-      _currentScreenIndex = 1;
-    });
-  }
-
-  void _switchToLogin() {
-    setState(() {
-      _currentScreenIndex = 0;
-    });
-  }
-
-  void _switchToForgotPassword() {
     setState(() {
       _currentScreenIndex = 2;
     });
   }
 
+  void _switchToLogin() {
+    setState(() {
+      _currentScreenIndex = 1;
+    });
+  }
+
+  void _switchToForgotPassword() {
+    setState(() {
+      _currentScreenIndex = 3;
+    });
+  }
+
+  void _switchToLanding() {
+    setState(() {
+      _currentScreenIndex = 0;
+    });
+  }
+
+  void _logout() {
+    _firebaseAuthService.signOut().then((_) {
+      setState(() {
+        _currentScreenIndex = 0;
+      });
+    });
+  }
+
+  Future<void> _handleGuestLogin() async {
+    try {
+      debugPrint('Starting guest login...');
+      await _firebaseAuthService.signInAnonymously();
+      debugPrint('Guest login successful!');
+      // Navigation will be handled by StreamBuilder when auth state changes
+    } catch (e) {
+      debugPrint('Guest login error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to sign in as guest: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          transitionBuilder: (Widget child, Animation<double> animation) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          child: _buildCurrentScreen(),
-        ),
-      ),
+    return StreamBuilder<User?>(
+      stream: _firebaseAuthService.authStateChanges,
+      builder: (context, snapshot) {
+        // If user is authenticated, show dashboard
+        if (snapshot.hasData && snapshot.data != null) {
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: SafeArea(
+              child: DashboardPage(
+                key: const ValueKey(4),
+                onLogout: _logout,
+                isFirstTimeSignup: _firebaseAuthService.isFirstTimeSignup,
+              ),
+            ),
+          );
+        }
+
+        // If user is not authenticated, show auth screens
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: _buildCurrentScreen(),
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildCurrentScreen() {
     switch (_currentScreenIndex) {
       case 0:
-        return LoginPage(
+        return LandingPage(
           key: const ValueKey(0),
-          onSwitchToRegister: _switchToRegister,
-          onForgotPassword: _switchToForgotPassword,
+          onContinueAsVendor: _switchToLogin,
+          onContinueAsGuest: _handleGuestLogin,
         );
       case 1:
-        return RegisterPage(
+        return LoginPage(
           key: const ValueKey(1),
-          onSwitchToLogin: _switchToLogin,
+          onSwitchToRegister: _switchToRegister,
+          onForgotPassword: _switchToForgotPassword,
+          onBackToLanding: _switchToLanding,
         );
       case 2:
-        return ForgotPasswordPage(
+        return RegisterPage(
           key: const ValueKey(2),
+          onSwitchToLogin: _switchToLogin,
+          onBackToLanding: _switchToLanding,
+        );
+      case 3:
+        return ForgotPasswordPage(
+          key: const ValueKey(3),
           onBackToLogin: _switchToLogin,
         );
       default:
-        return LoginPage(
+        return LandingPage(
           key: const ValueKey(0),
-          onSwitchToRegister: _switchToRegister,
-          onForgotPassword: _switchToForgotPassword,
+          onContinueAsVendor: _switchToLogin,
+          onContinueAsGuest: _handleGuestLogin,
         );
     }
   }
