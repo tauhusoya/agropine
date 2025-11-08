@@ -90,7 +90,36 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Back Button
+                if (widget.onBackToLanding != null)
+                  GestureDetector(
+                    onTap: widget.onBackToLanding,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.borderColor),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.arrow_back, size: 20),
+                    ),
+                  ),
                 const SizedBox(height: 24),
+                // Header
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Create Account',
+                      style: Theme.of(context).textTheme.displayMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Join us and start growing your business',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
                 // Error Message Display
                 if (_errorMessage != null)
                   Container(
@@ -121,21 +150,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ],
                     ),
                   ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Create Account',
-                      style: Theme.of(context).textTheme.displayMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                  'Join us and start growing your business',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
             StaggeredFadeInWidget(
               itemDelay: const Duration(milliseconds: 150),
               children: [
@@ -225,7 +239,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   Checkbox(
                     value: _agreedToTerms,
-                    activeColor: AppTheme.primaryGold,
+                    activeColor: AppTheme.lightGreen,
                     onChanged: (value) {
                       setState(() {
                         _agreedToTerms = value ?? false;

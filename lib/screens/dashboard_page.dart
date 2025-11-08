@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'dart:async';
 import '../theme/app_theme.dart';
 import '../widgets/welcome_modal.dart';
@@ -25,9 +26,6 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   bool _welcomeShown = false;
   late FirebaseAuthService _authService;
-  PageController? _pageController;
-  int _currentPage = 0;
-  Timer? _autoSlideTimer;
   Position? _userLocation;
   bool _locationLoading = false;
   List<Map<String, dynamic>>? _sortedFarmersCache;
@@ -100,20 +98,7 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _authService = FirebaseAuthService();
-    _pageController = PageController();
     
-    // Auto-slide carousel every 5 seconds
-    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (mounted && _pageController?.hasClients == true) {
-        int nextPage = (_currentPage + 1) % _announcements.length;
-        _pageController?.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
-
     if (widget.isFirstTimeSignup) {
       // Show welcome immediately for first-time signup
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -352,8 +337,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
-    _autoSlideTimer?.cancel();
-    _pageController?.dispose();
     super.dispose();
   }
 
@@ -390,66 +373,43 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 24),
               // Carousel with auto-slide
-              SizedBox(
-                height: 150,
-                child: Stack(
-                  children: [
-                    PageView.builder(
-                      controller: _pageController,
-                      onPageChanged: (index) {
-                        setState(() {
-                          _currentPage = index;
-                        });
-                      },
-                      itemCount: _announcements.length,
-                      itemBuilder: (context, index) {
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryGold,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Text(
-                                _announcements[index],
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: CarouselSlider(
+                  options: CarouselOptions(
+                    height: 160.0,
+                    enlargeCenterPage: true,
+                    autoPlay: true,
+                    aspectRatio: 16 / 9,
+                    autoPlayCurve: Curves.fastOutSlowIn,
+                    enableInfiniteScroll: true,
+                    autoPlayAnimationDuration: const Duration(milliseconds: 800),
+                    viewportFraction: 0.9,
+                  ),
+                  items: _announcements.map((announcement) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryYellow,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text(
+                              announcement,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: AppTheme.textDark,
+                                    fontWeight: FontWeight.w600,
                               ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    // Dot indicators
-                    Positioned(
-                      bottom: 8,
-                      left: 0,
-                      right: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          _announcements.length,
-                          (index) => Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _currentPage == index
-                                  ? AppTheme.primaryGold
-                                  : Colors.white.withValues(alpha: 0.5),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    );
+                  }).toList(),
                 ),
               ),
               const SizedBox(height: 40),
@@ -542,12 +502,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (_locationLoading)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
                 ],
               ),
               const SizedBox(height: 12),

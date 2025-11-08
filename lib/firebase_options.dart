@@ -31,6 +31,7 @@ class DefaultFirebaseOptions {
     appId: '1:612503189153:android:82501f83c8082ded5462e0',
     messagingSenderId: '612503189153',
     projectId: 'agropine-242ef',
+    authDomain: 'agropine-242ef.firebaseapp.com',
     storageBucket: 'agropine-242ef.firebasestorage.app',
   );
 }
