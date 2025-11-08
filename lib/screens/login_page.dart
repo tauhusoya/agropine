@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
@@ -6,6 +7,8 @@ import '../widgets/animations.dart';
 import '../utils/input_validators.dart';
 import '../utils/form_validation_state.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/error_handler.dart';
+import '../services/logging_service.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -262,6 +265,10 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      LoggingService.logUserAction('login_attempt', data: {
+        'email': _emailController.text,
+      });
+
       final firebaseAuthService = FirebaseAuthService();
       final userCredential = await firebaseAuthService.loginWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -269,6 +276,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (mounted) {
+        LoggingService.logAuthEvent('login_success', userId: userCredential.user?.uid);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Welcome ${userCredential.user?.displayName ?? 'back'}!'),
@@ -277,14 +285,17 @@ class _LoginPageState extends State<LoginPage> {
         );
         // Navigation to dashboard will be handled by auth state changes
       }
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
       if (mounted) {
-        String errorMessage = e.toString();
+        LoggingService.error('Login failed', tag: 'AUTH', error: e);
+        
+        // Get user-friendly error message
+        final errorMessage = ErrorHandler.handleAuthError(e);
         
         // Check if it's a "user not found" error, which might mean they signed up with Google
-        if (errorMessage.contains('user-not-found') || 
-            errorMessage.contains('wrong-password') ||
-            errorMessage.contains('invalid-credential')) {
+        if (e.code == 'user-not-found' || 
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
           // Offer to set password for Google accounts
           _showSetPasswordDialog(
             email: _emailController.text.trim(),
@@ -295,6 +306,16 @@ class _LoginPageState extends State<LoginPage> {
           });
           return;
         }
+        
+        setState(() {
+          _errorMessage = errorMessage;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        LoggingService.error('Unexpected login error', tag: 'AUTH', error: e);
+        final errorMessage = ErrorHandler.handleError(e);
         
         setState(() {
           _errorMessage = errorMessage;

@@ -1,0 +1,43 @@
+{
+  "project_info": {
+    "project_number": "612503189153",
+    "project_id": "agropine-242ef",
+    "storage_bucket": "agropine-242ef.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:612503189153:android:82501f83c8082ded5462e0",
+        "android_client_info": {
+          "package_name": "com.example.agropine"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "612503189153-oqat8h5537fjt5h58at8g2tplduoae5a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuzeOq1uiiXsqnrmSlEVnpZoNOu9y6_K8"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1,
+          "analytics_property_id": "G-612503189153"
+        },
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "612503189153-oqat8h5537fjt5h58at8g2tplduoae5a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

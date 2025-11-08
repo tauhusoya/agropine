@@ -5,7 +5,7 @@ import 'landing_page.dart';
 import 'login_page.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
-import 'dashboard_page.dart';
+import 'main_tab_screen.dart';
 
 class AuthenticationScreen extends StatefulWidget {
   const AuthenticationScreen({super.key});
@@ -80,12 +80,12 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     return StreamBuilder<User?>(
       stream: _firebaseAuthService.authStateChanges,
       builder: (context, snapshot) {
-        // If user is authenticated, show dashboard
+        // If user is authenticated, show main tab screen with dashboard and profile
         if (snapshot.hasData && snapshot.data != null) {
           return Scaffold(
             backgroundColor: Colors.white,
             body: SafeArea(
-              child: DashboardPage(
+              child: MainTabScreen(
                 key: const ValueKey(4),
                 onLogout: _logout,
                 isFirstTimeSignup: _firebaseAuthService.isFirstTimeSignup,

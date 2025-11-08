@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.example.agropine",
+    "sha256_cert_fingerprints": ["14:6D:E9:83:C5:73:62:C5:51:C5:6D:7E:14:26:04:E1:B2:26:B8:26:DE:B3:06:52:1C:9D:33:D7:1E:14:29"]
+  }
+}]

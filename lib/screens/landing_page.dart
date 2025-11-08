@@ -79,7 +79,7 @@ class _LandingPageState extends State<LandingPage> {
                     child: ElevatedButton(
                       onPressed: widget.onContinueAsVendor,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryGold,
+                        backgroundColor: AppTheme.primaryYellow,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -88,7 +88,7 @@ class _LandingPageState extends State<LandingPage> {
                       child: Text(
                         "I'm a Farmer / Vendor",
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: Colors.white,
+                              color: AppTheme.textDark,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
