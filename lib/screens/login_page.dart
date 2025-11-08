@@ -116,7 +116,9 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       Text(
                         'Welcome Back',
-                        style: Theme.of(context).textTheme.displayMedium,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -199,7 +201,11 @@ class _LoginPageState extends State<LoginPage> {
                         message: 'Click to reset your password',
                         child: TextButton(
                           onPressed: widget.onForgotPassword,
-                          child: const Text('Forgot Password?'),
+                          child: const Text('Forgot Password?', style: TextStyle(
+                            color: AppTheme.primaryGold,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          )),
                         ),
                       ),
                     ),
@@ -235,7 +241,11 @@ class _LoginPageState extends State<LoginPage> {
                           message: 'Click to create a new account',
                           child: TextButton(
                             onPressed: widget.onSwitchToRegister,
-                            child: const Text('Sign Up'),
+                            child: const Text('Sign Up', style: TextStyle(
+                              color: AppTheme.primaryGold,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            )),
                           ),
                         ),
                       ],

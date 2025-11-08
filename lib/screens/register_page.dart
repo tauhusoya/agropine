@@ -110,7 +110,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   children: [
                     Text(
                       'Create Account',
-                      style: Theme.of(context).textTheme.displayMedium,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -301,7 +303,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     message: 'Click to go to sign in page',
                     child: TextButton(
                       onPressed: widget.onSwitchToLogin,
-                      child: const Text('Sign In'),
+                      child: const Text('Sign In', style: TextStyle(
+                        color: AppTheme.primaryGold,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      )),
                     ),
                   ),
                 ],
