@@ -13,12 +13,14 @@ import '../services/logging_service.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback onSwitchToRegister;
+  final VoidCallback onSwitchToVendor;
   final VoidCallback onForgotPassword;
   final VoidCallback? onBackToLanding;
 
   const LoginPage({
     super.key,
     required this.onSwitchToRegister,
+    required this.onSwitchToVendor,
     required this.onForgotPassword,
     this.onBackToLanding,
   });
@@ -228,7 +230,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 32),
                   Semantics(
-                    label: 'Sign up navigation',
+                    label: 'Create vendor account navigation',
                     button: true,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -238,9 +240,9 @@ class _LoginPageState extends State<LoginPage> {
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         Tooltip(
-                          message: 'Click to create a new account',
+                          message: 'Click to create a vendor account',
                           child: TextButton(
-                            onPressed: widget.onSwitchToRegister,
+                            onPressed: widget.onSwitchToVendor,
                             child: const Text('Sign Up', style: TextStyle(
                               color: AppTheme.primaryGold,
                               fontWeight: FontWeight.bold,
@@ -303,10 +305,8 @@ class _LoginPageState extends State<LoginPage> {
         final errorMessage = ErrorHandler.handleAuthError(e);
         
         // Check if it's a "user not found" error, which might mean they signed up with Google
-        if (e.code == 'user-not-found' || 
-            e.code == 'wrong-password' ||
-            e.code == 'invalid-credential') {
-          // Offer to set password for Google accounts
+        // Only show the set password dialog for "user-not-found" case
+        if (e.code == 'user-not-found') {
           _showSetPasswordDialog(
             email: _emailController.text.trim(),
             errorMessage: errorMessage,
@@ -317,6 +317,7 @@ class _LoginPageState extends State<LoginPage> {
           return;
         }
         
+        // For wrong password and other auth errors, show the error message directly
         setState(() {
           _errorMessage = errorMessage;
           _isLoading = false;

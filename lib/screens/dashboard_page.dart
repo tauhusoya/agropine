@@ -6,8 +6,10 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'dart:async';
 import '../theme/app_theme.dart';
 import '../widgets/welcome_modal.dart';
+import '../widgets/vendor_card.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/location_service.dart';
+import '../services/analytics_service.dart';
 
 class DashboardPage extends StatefulWidget {
   final VoidCallback onLogout;
@@ -24,7 +26,6 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  bool _welcomeShown = false;
   late FirebaseAuthService _authService;
   Position? _userLocation;
   bool _locationLoading = false;
@@ -55,42 +56,58 @@ class _DashboardPageState extends State<DashboardPage> {
     {
       'id': '1',
       'name': 'Green Valley Farm',
+      'businessName': 'Green Valley',
       'type': 'Farmer',
       'latitude': 3.1390,
       'longitude': 101.6869,
       'products': ['Fruits', 'Seeds', 'Vegetables'],
       'rating': 4.8,
       'reviews': 156,
+      'phoneNumber': '016-123-4567',
+      'description': 'Fresh organic fruits and vegetables from our farm. We practice sustainable farming methods.',
+      'location': 'Kuala Lumpur',
     },
     {
       'id': '2',
       'name': 'Fresh Harvest Trader',
+      'businessName': 'Fresh Harvest',
       'type': 'Trader',
       'latitude': 3.1425,
       'longitude': 101.6905,
       'products': ['Medication', 'Health'],
       'rating': 4.5,
       'reviews': 89,
+      'phoneNumber': '017-234-5678',
+      'description': 'Quality health and wellness products for you and your family.',
+      'location': 'Petaling Jaya',
     },
     {
       'id': '3',
       'name': 'Organic Seeds Co',
+      'businessName': 'Organic Seeds',
       'type': 'Farmer',
       'latitude': 3.1350,
       'longitude': 101.6820,
       'products': ['Seeds', 'Fruits'],
       'rating': 4.9,
       'reviews': 203,
+      'phoneNumber': '016-345-6789',
+      'description': 'Premium organic seeds for all types of crops. Certified and tested.',
+      'location': 'Shah Alam',
     },
     {
       'id': '4',
       'name': 'Heritage Jam House',
+      'businessName': 'Heritage Jam',
       'type': 'Trader',
       'latitude': 3.1410,
       'longitude': 101.6880,
       'products': ['Jam', 'Health'],
       'rating': 4.6,
       'reviews': 112,
+      'phoneNumber': '012-456-7890',
+      'description': 'Homemade traditional jam made from the finest fruits.',
+      'location': 'Subang',
     },
   ];
 
@@ -99,63 +116,31 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     _authService = FirebaseAuthService();
     
+    // Log dashboard page view
+    AnalyticsService.logPageView(pageName: 'Dashboard');
+    
+    // Always check Firestore for welcome status, regardless of isFirstTimeSignup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showWelcomeModalIfFirstTime();
+      // Load location after modal check
+      _loadUserLocation();
+    });
+    
+    // Reset the first-time signup flag if this was a first-time signup
     if (widget.isFirstTimeSignup) {
-      // Show welcome immediately for first-time signup
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showWelcomeModalForNewUser();
-        // Reset the flag after showing
-        _authService.resetFirstTimeSignupFlag();
-        // Load location after showing welcome
-        _loadUserLocation();
-      });
-    } else {
-      // Check Firestore for subsequent logins
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showWelcomeModalIfFirstTime();
-        // Load location after modal check
-        _loadUserLocation();
-      });
-    }
-  }
-
-  Future<void> _showWelcomeModalForNewUser() async {
-    if (_welcomeShown) return;
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      _welcomeShown = true;
-      final firstName = user.displayName?.split(' ').first ?? 'User';
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => WelcomeModal(
-            userName: firstName,
-            onClose: () async {
-              Navigator.pop(context);
-              // Mark welcome as seen
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .update({'hasSeenWelcome': true});
-            },
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error showing welcome modal: $e');
+      _authService.resetFirstTimeSignupFlag();
     }
   }
 
   Future<void> _showWelcomeModalIfFirstTime() async {
-    if (_welcomeShown) return;
-
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        debugPrint('No current user, skipping welcome check');
+        return;
+      }
+
+      debugPrint('Checking Firestore for hasSeenWelcome...');
 
       // Add a small delay to ensure Firestore data is synced
       await Future.delayed(const Duration(milliseconds: 500));
@@ -177,13 +162,17 @@ class _DashboardPageState extends State<DashboardPage> {
         }
       }
 
-      if (userDoc == null || !userDoc.exists || !mounted) return;
+      if (userDoc == null || !userDoc.exists || !mounted) {
+        debugPrint('User doc not found in Firestore');
+        return;
+      }
 
       final data = userDoc.data();
       final hasSeenWelcome = data?['hasSeenWelcome'] ?? false;
+      debugPrint('hasSeenWelcome from Firestore: $hasSeenWelcome');
 
-      if (!hasSeenWelcome && !_welcomeShown) {
-        _welcomeShown = true;
+      if (!hasSeenWelcome) {
+        debugPrint('Showing welcome modal');
         final firstName = data?['firstName'] ?? 'User';
 
         // Show welcome modal
@@ -195,15 +184,19 @@ class _DashboardPageState extends State<DashboardPage> {
               userName: firstName,
               onClose: () async {
                 Navigator.pop(context);
-                // Mark welcome as seen
+                // Mark welcome as seen in Firestore
+                debugPrint('Marking hasSeenWelcome as true');
                 await FirebaseFirestore.instance
                     .collection('users')
                     .doc(user.uid)
                     .update({'hasSeenWelcome': true});
+                debugPrint('Welcome marked as seen');
               },
             ),
           );
         }
+      } else {
+        debugPrint('Welcome already seen, not showing modal');
       }
     } catch (e) {
       debugPrint('Error showing welcome modal: $e');
@@ -219,6 +212,9 @@ class _DashboardPageState extends State<DashboardPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryYellow,
+            ),
             child: const Text('Cancel'),
           ),
           TextButton(
@@ -226,6 +222,9 @@ class _DashboardPageState extends State<DashboardPage> {
               Navigator.pop(context);
               widget.onLogout();
             },
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryYellow,
+            ),
             child: const Text('Logout'),
           ),
         ],
@@ -333,6 +332,96 @@ class _DashboardPageState extends State<DashboardPage> {
       final products = farmer['products'] as List<String>?;
       return products?.contains(_selectedCategory) ?? false;
     }).toList();
+  }
+
+  void _showVendorDetails(Map<String, dynamic> vendor) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                vendor['name'] as String,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 12),
+              Text(
+                'Products & Services',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: (vendor['products'] as List<String>)
+                    .map((product) => Chip(
+                          label: Text(product),
+                          backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.1),
+                          labelStyle: const TextStyle(
+                            color: AppTheme.primaryGold,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGold,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Contact ${vendor['name']} feature coming soon!'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'View Profile',
+                    style: TextStyle(
+                      color: AppTheme.textDark,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -595,157 +684,19 @@ class _DashboardPageState extends State<DashboardPage> {
                         final distanceText =
                             LocationService.formatDistance(distance);
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.borderColor),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          farmer['name'] as String,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyLarge
-                                              ?.copyWith(fontWeight: FontWeight.bold),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Wrap(
-                                          spacing: 8,
-                                          runSpacing: 4,
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: AppTheme.primaryGold
-                                                    .withValues(alpha: 0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                farmer['type'] as String,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: AppTheme.primaryGold,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green
-                                                    .withValues(alpha: 0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                distanceText,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Colors.green,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(Icons.star,
-                                                size: 16, color: Colors.orange),
-                                            const SizedBox(width: 4),
-                                            Flexible(
-                                              child: Text(
-                                                farmer['rating'].toString(),
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${farmer['reviews']} reviews',
-                                          style: const TextStyle(fontSize: 10),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: (farmer['products'] as List<String>)
-                                    .map((product) => Chip(
-                                      label: Text(product),
-                                      backgroundColor: AppTheme.primaryGold
-                                          .withValues(alpha: 0.1),
-                                      labelStyle: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.primaryGold,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                    ))
-                                    .toList(),
-                              ),
-                            ],
-                          ),
+                        return VendorCard(
+                          vendor: farmer,
+                          distanceText: distanceText,
+                          showHarvestMonth: false,
+                          onTap: () {
+                            _showVendorDetails(farmer);
+                          },
                         );
                       },
                     );
                   },
                 ),
+                const SizedBox(height: 80),
             ],
           ),
         ),

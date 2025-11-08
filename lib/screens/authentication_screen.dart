@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firebase_auth_service.dart';
-import 'landing_page.dart';
+import '../widgets/carousel_landing.dart';
 import 'login_page.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
+import 'vendor_email_page.dart';
+import 'vendor_waiting_page.dart';
+import 'vendor_details_page.dart';
 import 'main_tab_screen.dart';
 
 class AuthenticationScreen extends StatefulWidget {
@@ -17,6 +20,7 @@ class AuthenticationScreen extends StatefulWidget {
 class _AuthenticationScreenState extends State<AuthenticationScreen> {
   int _currentScreenIndex = 0;
   late FirebaseAuthService _firebaseAuthService;
+  String? _verifiedVendorEmail; // Store email after verification
 
   @override
   void initState() {
@@ -42,9 +46,43 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     });
   }
 
+  void _switchToVendorEmail() {
+    setState(() {
+      _currentScreenIndex = 4;
+    });
+  }
+
+  void _switchToVendorWaiting(String email) {
+    setState(() {
+      _verifiedVendorEmail = email;
+      _currentScreenIndex = 5;
+    });
+  }
+
+  void _switchToVendorDetails(String email) {
+    setState(() {
+      _verifiedVendorEmail = email;
+      _currentScreenIndex = 6;
+    });
+  }
+
+  void _onVendorRegistrationComplete() {
+    // This callback is called when vendor registration completes
+    // We force a rebuild of the widget tree, which will trigger the StreamBuilder
+    debugPrint('Vendor registration complete - triggering setState');
+    setState(() {
+      // Force rebuild - the StreamBuilder will now see the user is logged in and flag is false
+    });
+  }
+
   void _switchToLanding() {
+    // Clear vendor registration mode when going back to landing
+    _firebaseAuthService.setVendorRegistrationMode(false);
+    _firebaseAuthService.clearTemporaryVendorEmail();
+    
     setState(() {
       _currentScreenIndex = 0;
+      _verifiedVendorEmail = null;
     });
   }
 
@@ -80,8 +118,14 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     return StreamBuilder<User?>(
       stream: _firebaseAuthService.authStateChanges,
       builder: (context, snapshot) {
-        // If user is authenticated, show main tab screen with dashboard and profile
-        if (snapshot.hasData && snapshot.data != null) {
+        // Debug logging
+        debugPrint('AuthenticationScreen StreamBuilder rebuild');
+        debugPrint('User: ${snapshot.data?.email}');
+        debugPrint('isInVendorRegistration: ${_firebaseAuthService.isInVendorRegistration}');
+        
+        // If user is authenticated AND we're not in vendor registration flow, show main tab screen
+        if (snapshot.hasData && snapshot.data != null && !_firebaseAuthService.isInVendorRegistration) {
+          debugPrint('Showing MainTabScreen for user: ${snapshot.data?.email}');
           return Scaffold(
             backgroundColor: Colors.white,
             body: SafeArea(
@@ -114,15 +158,16 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
   Widget _buildCurrentScreen() {
     switch (_currentScreenIndex) {
       case 0:
-        return LandingPage(
+        return CarouselLanding(
           key: const ValueKey(0),
-          onContinueAsVendor: _switchToLogin,
+          onContinueAsVendor: _switchToVendorEmail,
           onContinueAsGuest: _handleGuestLogin,
         );
       case 1:
         return LoginPage(
           key: const ValueKey(1),
           onSwitchToRegister: _switchToRegister,
+          onSwitchToVendor: _switchToVendorEmail,
           onForgotPassword: _switchToForgotPassword,
           onBackToLanding: _switchToLanding,
         );
@@ -137,10 +182,34 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
           key: const ValueKey(3),
           onBackToLogin: _switchToLogin,
         );
+      case 4:
+        return VendorEmailPage(
+          key: const ValueKey(4),
+          onBackToLanding: _switchToLanding,
+          onSignIn: _switchToLogin,
+          onEmailSent: _switchToVendorWaiting,
+          firebaseAuthService: _firebaseAuthService,
+        );
+      case 5:
+        return VendorWaitingPage(
+          key: const ValueKey(5),
+          email: _verifiedVendorEmail!,
+          onBackToLanding: _switchToLanding,
+          onEmailVerified: _switchToVendorDetails,
+          firebaseAuthService: _firebaseAuthService,
+        );
+      case 6:
+        return VendorDetailsPage(
+          key: const ValueKey(6),
+          verifiedEmail: _verifiedVendorEmail!,
+          onBackToLanding: _switchToLanding,
+          firebaseAuthService: _firebaseAuthService,
+          onRegistrationComplete: _onVendorRegistrationComplete,
+        );
       default:
-        return LandingPage(
+        return CarouselLanding(
           key: const ValueKey(0),
-          onContinueAsVendor: _switchToLogin,
+          onContinueAsVendor: _switchToVendorEmail,
           onContinueAsGuest: _handleGuestLogin,
         );
     }

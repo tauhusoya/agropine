@@ -156,7 +156,7 @@ class LoggingService {
       message += ' | User: $userId';
     }
     if (error != null) {
-      error(message, tag: 'AUTH', error: error);
+      LoggingService.error(message, tag: 'AUTH', error: error);
     } else {
       info(message, tag: 'AUTH');
     }
