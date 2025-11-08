@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/floating_bottom_navbar.dart';
+import '../services/notification_service.dart';
 import 'dashboard_page.dart';
 import 'farmers_list_page.dart';
 import 'sellers_list_page.dart';
@@ -21,6 +22,32 @@ class MainTabScreen extends StatefulWidget {
 
 class _MainTabScreenState extends State<MainTabScreen> {
   int _currentIndex = 0;
+  late NotificationService _notificationService;
+  int _notificationCount = 0;
+  int _messageCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationService = NotificationService();
+    _startListeningToNotifications();
+  }
+
+  void _startListeningToNotifications() {
+    // Listen to unread notifications
+    _notificationService.getUnreadNotificationsStream().listen((count) {
+      setState(() {
+        _notificationCount = count;
+      });
+    });
+
+    // Listen to unread messages
+    _notificationService.getUnreadMessagesStream().listen((count) {
+      setState(() {
+        _messageCount = count;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +58,24 @@ class _MainTabScreenState extends State<MainTabScreen> {
           // Page content
           _buildPageContent(),
           
-          // Floating bottom navbar
+          // Floating bottom navbar with notification badges
           FloatingBottomNavBar(
             currentIndex: _currentIndex,
             onTap: (index) {
               setState(() {
                 _currentIndex = index;
               });
+              // Mark notifications as read when profile tab is tapped
+              if (index == 3) {
+                _notificationService.markAllNotificationsAsRead();
+              }
+              // Mark messages as read when sellers tab is tapped
+              if (index == 2) {
+                _notificationService.markAllMessagesAsRead();
+              }
             },
+            notificationCount: _notificationCount,
+            messageCount: _messageCount,
           ),
         ],
       ),

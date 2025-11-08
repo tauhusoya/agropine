@@ -81,7 +81,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   children: [
                     Text(
                       'Forgot Password?',
-                      style: Theme.of(context).textTheme.displayMedium,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -165,7 +167,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         message: 'Click to go back to sign in',
                         child: TextButton(
                           onPressed: widget.onBackToLogin,
-                          child: const Text('Sign In'),
+                          child: const Text('Sign In', style: TextStyle(
+                            color: AppTheme.primaryGold,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          )),
                         ),
                       ),
                     ],

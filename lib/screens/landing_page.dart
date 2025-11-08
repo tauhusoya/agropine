@@ -55,7 +55,7 @@ class _LandingPageState extends State<LandingPage> {
             const SizedBox(height: 24),
             Text(
               'AgroPine',
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textDark,
                   ),

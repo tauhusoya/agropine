@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import '../theme/app_theme.dart';
 import '../services/location_service.dart';
 import '../services/firebase_analytics_service.dart';
+import '../services/analytics_service.dart';
 
 class SellersListPage extends StatefulWidget {
   const SellersListPage({super.key});
@@ -121,6 +122,7 @@ class _SellersListPageState extends State<SellersListPage> {
     _allSellers = _sellersAndTraders;
     _applyFilters();
     _loadUserLocation();
+    AnalyticsService.logPageView(pageName: 'Sellers List');
   }
 
   @override

@@ -4,11 +4,15 @@ import '../theme/app_theme.dart';
 class FloatingBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final int notificationCount;
+  final int messageCount;
 
   const FloatingBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.notificationCount = 0,
+    this.messageCount = 0,
   });
 
   @override
@@ -51,12 +55,13 @@ class FloatingBottomNavBar extends StatelessWidget {
                 isActive: currentIndex == 1,
                 onTap: () => onTap(1),
               ),
-              // Sellers List Button
+              // Sellers List Button with notification badge
               _NavBarItem(
                 icon: Icons.shopping_bag_outlined,
                 activeIcon: Icons.shopping_bag,
                 label: 'Sellers',
                 isActive: currentIndex == 2,
+                badgeCount: messageCount,
                 onTap: () => onTap(2),
               ),
               // Profile Button
@@ -65,6 +70,7 @@ class FloatingBottomNavBar extends StatelessWidget {
                 activeIcon: Icons.person,
                 label: 'Profile',
                 isActive: currentIndex == 3,
+                badgeCount: notificationCount,
                 onTap: () => onTap(3),
               ),
             ],
@@ -81,6 +87,7 @@ class _NavBarItem extends StatelessWidget {
   final String label;
   final bool isActive;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _NavBarItem({
     required this.icon,
@@ -88,6 +95,7 @@ class _NavBarItem extends StatelessWidget {
     required this.label,
     required this.isActive,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -107,10 +115,40 @@ class _NavBarItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                isActive ? activeIcon : icon,
-                color: isActive ? AppTheme.lightGreen : Colors.grey[600],
-                size: 24,
+              Stack(
+                children: [
+                  Icon(
+                    isActive ? activeIcon : icon,
+                    color: isActive ? AppTheme.lightGreen : Colors.grey[600],
+                    size: 24,
+                  ),
+                  // Notification badge
+                  if (badgeCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16),
+                        child: Text(
+                          badgeCount > 99 ? '99+' : badgeCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(

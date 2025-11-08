@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:math';
 
 class FirebaseAuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -94,8 +95,9 @@ class FirebaseAuthService {
         email: email,
         password: password,
       );
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+    } on FirebaseAuthException {
+      // Re-throw the original FirebaseAuthException without converting to string
+      rethrow;
     }
   }
 
@@ -308,6 +310,267 @@ class FirebaseAuthService {
       } else if (e.code == 'credential-already-in-use') {
         throw 'This password is already in use.';
       }
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  // Track if we're in vendor registration flow (to prevent showing dashboard)
+  bool _isInVendorRegistration = false;
+
+  bool get isInVendorRegistration => _isInVendorRegistration;
+
+  void setVendorRegistrationMode(bool value) {
+    _isInVendorRegistration = value;
+  }
+
+  // Store temporary vendor email and password during registration
+  String? _temporaryVendorEmail;
+  String? _temporaryVendorPassword;
+
+  // Get temporary vendor email
+  String? get temporaryVendorEmail => _temporaryVendorEmail;
+
+  // Get temporary vendor password
+  String? get temporaryVendorPassword => _temporaryVendorPassword;
+
+  // Set temporary vendor email and password
+  void setTemporaryVendorEmail(String email) {
+    _temporaryVendorEmail = email;
+  }
+
+  // Set temporary vendor password
+  void setTemporaryVendorPassword(String password) {
+    _temporaryVendorPassword = password;
+  }
+
+  // Clear temporary vendor email and password
+  void clearTemporaryVendorEmail() {
+    _temporaryVendorEmail = null;
+    _temporaryVendorPassword = null;
+  }
+
+  // Check if temporary account email is verified
+  // Works by signing in with temp account and checking emailVerified flag
+  Future<bool> isEmailVerifiedViaAuth(String email, String tempPassword) async {
+    try {
+      // Try to sign in with temp account
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: tempPassword,
+      );
+
+      final user = userCredential.user;
+      if (user == null) {
+        return false;
+      }
+
+      // Reload user to get latest email verification status
+      await user.reload();
+      
+      final isVerified = user.emailVerified;
+      
+      // Sign out immediately (don't stay logged in)
+      await _firebaseAuth.signOut();
+      
+      debugPrint('Email verification status for $email: $isVerified');
+      return isVerified;
+    } catch (e) {
+      debugPrint('Error checking email verification: $e');
+      return false;
+    }
+  }
+
+  // Send email verification for vendor registration
+  // Creates temporary account, sends verification email, then signs out
+  Future<void> sendVendorVerificationEmail(String email) async {
+    try {
+      // Check if email is already registered
+      final signInMethods = await _firebaseAuth.fetchSignInMethodsForEmail(email);
+      if (signInMethods.isNotEmpty) {
+        throw 'This email is already registered. Please sign in instead.';
+      }
+
+      // Generate a temporary password
+      final tempPassword = _generateTemporaryPassword();
+
+      // Create temporary account
+      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: tempPassword,
+      );
+
+      final user = userCredential.user;
+      if (user != null) {
+        // Send verification email
+        await user.sendEmailVerification();
+
+        // Sign out immediately (user is not authenticated)
+        await _firebaseAuth.signOut();
+
+        // Store temp password for later use
+        setTemporaryVendorPassword(tempPassword);
+      }
+
+      // Store the email temporarily (will be used in vendor registration)
+      setTemporaryVendorEmail(email);
+
+      debugPrint('Verification email sent to: $email');
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  // Generate a temporary password for vendor verification
+  String _generateTemporaryPassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#\$%^&*';
+    final random = Random();
+    return List.generate(16, (index) => chars[random.nextInt(chars.length)]).join();
+  }
+
+  // Check if temporary account email is verified (by checking Firebase temp account)
+  // and update database if it is
+  Future<bool> checkAndMarkTempEmailAsVerified(String email, String tempPassword) async {
+    try {
+      // Try to sign in with temp credentials
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: tempPassword,
+      );
+
+      final user = userCredential.user;
+      if (user == null) {
+        return false;
+      }
+
+      // Reload user to get latest email verification status
+      await user.reload();
+
+      if (user.emailVerified) {
+        // Email is verified!
+        // Sign out temp account
+        await _firebaseAuth.signOut();
+
+        return true;
+      }
+
+      // Email not verified yet
+      await _firebaseAuth.signOut();
+      return false;
+    } catch (e) {
+      debugPrint('Error checking temp email verification: $e');
+      return false;
+    }
+  }
+
+  Future<void> sendEmailVerification() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        throw 'No user logged in';
+      }
+
+      await user.sendEmailVerification();
+      debugPrint('Verification email sent to ${user.email}');
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  // Reload current user to check email verification status
+  Future<void> reloadCurrentUser() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        throw 'No user logged in';
+      }
+
+      await user.reload();
+      debugPrint('User reloaded, email verified: ${user.emailVerified}');
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  // Check if current user's email is verified
+  bool isCurrentUserEmailVerified() {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return false;
+    return user.emailVerified;
+  }
+
+  // Complete vendor registration (Step 2: after email verification)
+  Future<void> completeVendorRegistration({
+    required String firstName,
+    required String lastName,
+    required String phoneNumber,
+    required String password,
+    String? ssmId,
+  }) async {
+    try {
+      // Get the temporary email and password that were stored during email verification
+      final email = _temporaryVendorEmail;
+      final tempPassword = _temporaryVendorPassword;
+      
+      if (email == null || email.isEmpty) {
+        throw 'No email found. Please start the registration process again.';
+      }
+
+      if (tempPassword == null || tempPassword.isEmpty) {
+        throw 'Temporary password not found. Please start the registration process again.';
+      }
+
+      // Sign in with the temporary account (that was created during email verification)
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: tempPassword,
+      );
+
+      var user = userCredential.user;
+      if (user == null) {
+        throw 'Failed to sign in with temporary account. Please try again.';
+      }
+
+      // Update the password to the user's chosen password
+      await user.updatePassword(password);
+
+      // Update user profile display name
+      await user.updateDisplayName('$firstName $lastName');
+
+      // Store additional user data in Firestore
+      await _firestore.collection('users').doc(user.uid).set({
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'phoneNumber': phoneNumber,
+        'ssmId': ssmId ?? '',
+        'accountType': 'vendor',
+        'businessNumber': '',
+        'hasSeenWelcome': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Mark as first-time signup
+      _isFirstTimeSignup = true;
+
+      // Clear temporary email and vendor registration mode
+      clearTemporaryVendorEmail();
+      setVendorRegistrationMode(false);
+
+      debugPrint('Vendor registration completed successfully!');
+      debugPrint('User UID: ${user.uid}');
+      debugPrint('User Email: ${user.email}');
+      debugPrint('Vendor registration mode: $_isInVendorRegistration');
+      debugPrint('Current user: ${_firebaseAuth.currentUser?.email}');
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
       throw e.toString();

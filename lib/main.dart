@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/authentication_screen.dart';
+import 'services/analytics_service.dart';
+import 'services/asset_management_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,11 +12,11 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
-  // Initialize Firebase Crashlytics
-  await FirebaseCrashlytics.instance.recordError(null, null, information: []);
-  FlutterError.onError = (errorDetails) {
-    FirebaseCrashlytics.instance.recordFlutterError(errorDetails);
-  };
+  // Initialize Crash Reporting and Analytics
+  await AnalyticsService.initCrashReporting();
+  
+  // Initialize Asset Optimization
+  await AssetManagementService.initializeAssetOptimization();
   
   runApp(const MainApp());
 }

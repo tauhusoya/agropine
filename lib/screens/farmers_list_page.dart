@@ -3,6 +3,9 @@ import 'package:geolocator/geolocator.dart';
 import '../theme/app_theme.dart';
 import '../services/location_service.dart';
 import '../services/firebase_analytics_service.dart';
+import '../services/search_history_service.dart';
+import '../services/analytics_service.dart';
+import '../widgets/vendor_card.dart';
 
 class FarmersListPage extends StatefulWidget {
   const FarmersListPage({super.key});
@@ -20,7 +23,16 @@ class _FarmersListPageState extends State<FarmersListPage> {
   bool _locationLoading = false;
   List<Map<String, dynamic>> _filteredFarmers = [];
   List<Map<String, dynamic>> _allFarmers = [];
-
+  
+  // Pagination variables
+  static const int itemsPerPage = 20;
+  int _currentPage = 1;
+  late ScrollController _scrollController;
+  bool _isLoadingMore = false;
+  
+  // Search history
+  List<String> _searchHistory = [];
+  bool _showSearchSuggestions = false;
   // Categories for farmers (Raw and Seed - upstream only, not processed into food yet)
   final List<Map<String, String>> _categories = [
     {'name': 'Raw', 'icon': '🥕'},
@@ -32,82 +44,114 @@ class _FarmersListPageState extends State<FarmersListPage> {
     {
       'id': '1',
       'name': 'Green Valley Farm',
+      'businessName': 'Green Valley',
       'type': 'Farmer',
       'latitude': 3.1390,
       'longitude': 101.6869,
       'products': ['Fruits', 'Seeds', 'Vegetables'],
       'rating': 4.8,
       'reviews': 156,
+      'phoneNumber': '016-123-4567',
+      'description': 'Fresh organic fruits and vegetables from our farm. We practice sustainable farming methods.',
+      'location': 'Kuala Lumpur',
     },
     {
       'id': '2',
       'name': 'Fresh Harvest Trader',
+      'businessName': 'Fresh Harvest',
       'type': 'Trader',
       'latitude': 3.1425,
       'longitude': 101.6905,
       'products': ['Medication', 'Health'],
       'rating': 4.5,
       'reviews': 89,
+      'phoneNumber': '017-234-5678',
+      'description': 'Quality health and wellness products for you and your family.',
+      'location': 'Petaling Jaya',
     },
     {
       'id': '3',
       'name': 'Organic Seeds Co',
+      'businessName': 'Organic Seeds',
       'type': 'Farmer',
       'latitude': 3.1350,
       'longitude': 101.6820,
       'products': ['Seeds', 'Fruits'],
       'rating': 4.9,
       'reviews': 203,
+      'phoneNumber': '016-345-6789',
+      'description': 'Premium organic seeds for all types of crops. Certified and tested.',
+      'location': 'Shah Alam',
     },
     {
       'id': '4',
       'name': 'Heritage Jam House',
+      'businessName': 'Heritage Jam',
       'type': 'Trader',
       'latitude': 3.1410,
       'longitude': 101.6880,
       'products': ['Jam', 'Health', 'Medication'],
       'rating': 4.7,
       'reviews': 142,
+      'phoneNumber': '012-456-7890',
+      'description': 'Homemade traditional jam made from the finest fruits.',
+      'location': 'Subang',
     },
     {
       'id': '5',
       'name': 'Sunny Citrus Farm',
+      'businessName': 'Sunny Citrus',
       'type': 'Farmer',
       'latitude': 3.1370,
       'longitude': 101.6850,
       'products': ['Fruits', 'Juice'],
       'rating': 4.6,
       'reviews': 98,
+      'phoneNumber': '016-567-8901',
+      'description': 'Fresh citrus fruits and natural juices from our orchard.',
+      'location': 'Damansara',
     },
     {
       'id': '6',
       'name': 'Wellness Herbs Trader',
+      'businessName': 'Wellness Herbs',
       'type': 'Trader',
       'latitude': 3.1405,
       'longitude': 101.6875,
       'products': ['Health', 'Medication'],
       'rating': 4.9,
       'reviews': 175,
+      'phoneNumber': '017-678-9012',
+      'description': 'Herbal remedies and wellness products for natural health.',
+      'location': 'Ampang',
     },
     {
       'id': '7',
       'name': 'Pineapple Paradise',
+      'businessName': 'Pineapple Paradise',
       'type': 'Farmer',
       'latitude': 3.1385,
       'longitude': 101.6860,
       'products': ['Fruits', 'Seeds', 'Jam'],
       'rating': 5.0,
       'reviews': 289,
+      'phoneNumber': '016-789-0123',
+      'description': 'Award-winning pineapples and pineapple products. Freshly harvested daily.',
+      'location': 'Serdang',
     },
     {
       'id': '8',
       'name': 'Eco Garden Supplier',
+      'businessName': 'Eco Garden',
       'type': 'Trader',
       'latitude': 3.1420,
       'longitude': 101.6890,
       'products': ['Seeds', 'Equipment', 'Vegetables'],
       'rating': 4.4,
       'reviews': 67,
+      'phoneNumber': '012-890-1234',
+      'description': 'Organic gardening supplies and equipment for your garden.',
+      'location': 'Cyberjaya',
     },
   ];
 
@@ -115,15 +159,65 @@ class _FarmersListPageState extends State<FarmersListPage> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _searchController.addListener(_onSearchChanged);
     _allFarmers = _farmersAndTraders;
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
     _applyFilters();
     _loadUserLocation();
+    _loadSearchHistory();
+    
+    // Log page view
+    AnalyticsService.logPageView(pageName: 'Farmers List');
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
+  }
+  
+  Future<void> _loadSearchHistory() async {
+    final history = await SearchHistoryService.getSearchHistory();
+    if (mounted) {
+      setState(() {
+        _searchHistory = history;
+      });
+    }
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _showSearchSuggestions = _searchController.text.isNotEmpty;
+    });
+  }
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 500) {
+      _loadMoreItems();
+    }
+  }
+
+  void _loadMoreItems() {
+    if (_isLoadingMore || _currentPage * itemsPerPage >= _allFarmers.length) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Simulate network delay
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _currentPage++;
+          _isLoadingMore = false;
+        });
+      }
+    });
   }
 
   Future<void> _loadUserLocation() async {
@@ -153,12 +247,12 @@ class _FarmersListPageState extends State<FarmersListPage> {
 
   List<Map<String, dynamic>> _getSortedAndFilteredFarmers() {
     var filtered = _allFarmers.where((farmer) {
-      // Search filter
-      final matchesSearch = _searchController.text.isEmpty ||
-          farmer['name']
-              .toString()
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase());
+      // Enhanced search filter - checks name, business name, location
+      final searchText = _searchController.text.toLowerCase();
+      final nameMatch = farmer['name'].toString().toLowerCase().contains(searchText);
+      final businessNameMatch = (farmer['businessName'] as String?)?.toLowerCase().contains(searchText) ?? false;
+      final locationMatch = (farmer['location'] as String?)?.toLowerCase().contains(searchText) ?? false;
+      final matchesSearch = searchText.isEmpty || nameMatch || businessNameMatch || locationMatch;
 
       // Type filter
       final matchesType = _selectedType == null || farmer['type'] == _selectedType;
@@ -170,7 +264,8 @@ class _FarmersListPageState extends State<FarmersListPage> {
       return matchesSearch && matchesType && matchesCategory;
     }).toList();
 
-    // Add distance to each farmer
+    // Add distance to each farmer and filter by 5km radius
+    const double defaultRadiusKm = 5.0;
     if (_userLocation != null) {
       for (var farmer in filtered) {
         final distance = LocationService.calculateDistance(
@@ -181,6 +276,12 @@ class _FarmersListPageState extends State<FarmersListPage> {
         );
         farmer['distance'] = distance;
       }
+      
+      // Filter to only show vendors within 5km radius
+      filtered = filtered.where((farmer) {
+        final distance = farmer['distance'] as double? ?? double.infinity;
+        return distance <= defaultRadiusKm;
+      }).toList();
     }
 
     // Apply sorting
@@ -210,10 +311,23 @@ class _FarmersListPageState extends State<FarmersListPage> {
   }
 
   void _applyFilters() {
+    // Reset pagination when filters change
+    _currentPage = 1;
+    _isLoadingMore = false;
     setState(() {
       _filteredFarmers = _getSortedAndFilteredFarmers();
     });
     // Log search for analytics
+    if (_searchController.text.isNotEmpty) {
+      AnalyticsService.logSearch(
+        searchTerm: _searchController.text,
+        resultCount: _filteredFarmers.length,
+        category: _selectedCategory,
+        location: _userLocation != null
+            ? LocationService.formatDistance(0)
+            : null, // Placeholder
+      );
+    }
     FirebaseAnalyticsService.logFarmerSearch(
       category: _selectedCategory,
       resultCount: _filteredFarmers.length,
@@ -281,10 +395,13 @@ class _FarmersListPageState extends State<FarmersListPage> {
         foregroundColor: AppTheme.textDark,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
+      body: Column(
+        children: [
+          // Search and Filter Section (Scrollable)
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
@@ -292,8 +409,14 @@ class _FarmersListPageState extends State<FarmersListPage> {
                   TextField(
                     controller: _searchController,
                     onChanged: (_) => _applyFilters(),
+                    onSubmitted: (value) {
+                      if (value.isNotEmpty) {
+                        SearchHistoryService.addSearchTerm(value);
+                        _loadSearchHistory();
+                      }
+                    },
                     decoration: InputDecoration(
-                      hintText: 'Search by name...',
+                      hintText: 'Search by name, location...',
                       prefixIcon: const Icon(Icons.search, color: AppTheme.textLight),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
@@ -321,6 +444,42 @@ class _FarmersListPageState extends State<FarmersListPage> {
                       fillColor: Colors.white,
                     ),
                   ),
+                  // Search history suggestions
+                  if (_showSearchSuggestions && _searchHistory.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.borderColor),
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _searchHistory.length,
+                        itemBuilder: (context, index) {
+                          final term = _searchHistory[index];
+                          return ListTile(
+                            leading: const Icon(Icons.history, size: 18, color: AppTheme.textLight),
+                            title: Text(term, style: const TextStyle(fontSize: 14)),
+                            onTap: () {
+                              _searchController.text = term;
+                              _applyFilters();
+                              _showSearchSuggestions = false;
+                              FocusScope.of(context).unfocus();
+                              SearchHistoryService.addSearchTerm(term);
+                            },
+                            trailing: IconButton(
+                              icon: const Icon(Icons.clear, size: 16),
+                              onPressed: () {
+                                SearchHistoryService.removeSearchTerm(term);
+                                _loadSearchHistory();
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   // Horizontal scrollable category cards (Raw & Seed - upstream only)
                   SizedBox(
@@ -434,226 +593,108 @@ class _FarmersListPageState extends State<FarmersListPage> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  // Farmers List
-                  if (filteredFarmers.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 64,
-                              color: Colors.grey[300],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No farmers found',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    color: AppTheme.textLight,
-                                  ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Try adjusting your filters',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppTheme.textLight,
-                                  ),
-                            ),
-                          ],
-                        ),
+                ],
+              ),
+            ),
+          ),
+          // Farmers List with Pagination
+          Expanded(
+            child: filteredFarmers.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey[300],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No farmers found',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  color: AppTheme.textLight,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try adjusting your filters',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: AppTheme.textLight,
+                                ),
+                          ),
+                        ],
                       ),
-                    )
-                  else
-                    Column(
-                      children: [
-                        ...filteredFarmers.asMap().entries.map((entry) {
-                          final farmer = entry.value;
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 100),
+                    itemCount: (filteredFarmers.length ~/ itemsPerPage + 1) + (_isLoadingMore ? 1 : 0),
+                    itemBuilder: (context, pageIndex) {
+                      // Show loading indicator on last page while loading
+                      if (_isLoadingMore && pageIndex == (filteredFarmers.length ~/ itemsPerPage)) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.primaryGold,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Build farmers for this page
+                      final startIndex = pageIndex * itemsPerPage;
+                      final endIndex = ((pageIndex + 1) * itemsPerPage).clamp(0, filteredFarmers.length);
+                      
+                      if (startIndex >= filteredFarmers.length) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Column(
+                        children: filteredFarmers
+                            .sublist(startIndex, endIndex)
+                            .map((farmer) {
                           final distanceText = farmer['distance'] != null
                               ? LocationService.formatDistance(farmer['distance'] as double)
                               : 'N/A';
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.borderColor),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: InkWell(
-                              onTap: () {
-                                _showFarmerDetails(farmer);
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Header: Name, Type, Distance
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                farmer['name'] as String,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyLarge
-                                                    ?.copyWith(
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Row(
-                                                children: [
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme.primaryGold
-                                                          .withValues(alpha: 0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(6),
-                                                    ),
-                                                    child: Text(
-                                                      farmer['type'] as String,
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: AppTheme.primaryGold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green
-                                                          .withValues(alpha: 0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(6),
-                                                    ),
-                                                    child: Text(
-                                                      distanceText,
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: Colors.green,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(
-                                                  Icons.star,
-                                                  size: 16,
-                                                  color: Colors.orange,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  (farmer['rating'] as num)
-                                                      .toStringAsFixed(1),
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${farmer['reviews']} reviews',
-                                              style: const TextStyle(fontSize: 11),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    // Products
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: (farmer['products'] as List<String>)
-                                          .take(3)
-                                          .map((product) => Chip(
-                                                label: Text(product),
-                                                backgroundColor: AppTheme.primaryGold
-                                                    .withValues(alpha: 0.1),
-                                                labelStyle: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: AppTheme.primaryGold,
-                                                ),
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 6,
-                                                  vertical: 2,
-                                                ),
-                                              ))
-                                          .toList(),
-                                    ),
-                                    if ((farmer['products'] as List<String>).length > 3)
-                                      const SizedBox(height: 6),
-                                    if ((farmer['products'] as List<String>).length > 3)
-                                      Text(
-                                        '+${(farmer['products'] as List<String>).length - 3} more products',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              color: AppTheme.textLight,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          return VendorCard(
+                            vendor: farmer,
+                            distanceText: distanceText,
+                            showHarvestMonth: true,
+                            onTap: () {
+                              _showFarmerDetails(farmer);
+                            },
                           );
-                        }),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
-                ],
-            ),
+                        }).toList(),
+                      );
+                    },
+                  ),
           ),
-        ),
-      );
+        ],
+      ),
+    );
   }
 
   void _showFarmerDetails(Map<String, dynamic> farmer) {
+    // Log vendor view
+    final distance = farmer['distance'] as double? ?? 0.0;
+    AnalyticsService.logVendorView(
+      vendorId: farmer['id'] as String,
+      vendorName: farmer['name'] as String,
+      vendorType: farmer['type'] as String,
+      distance: distance,
+    );
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -683,41 +724,7 @@ class _FarmersListPageState extends State<FarmersListPage> {
                       fontWeight: FontWeight.bold,
                     ),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGold.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      farmer['type'] as String,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primaryGold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 16, color: Colors.orange),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${farmer['rating']} (${farmer['reviews']} reviews)',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               const Divider(),
               const SizedBox(height: 12),
               Text(
@@ -762,7 +769,7 @@ class _FarmersListPageState extends State<FarmersListPage> {
                     );
                   },
                   child: const Text(
-                    'Contact Farmer',
+                    'View Profile',
                     style: TextStyle(
                       color: AppTheme.textDark,
                       fontWeight: FontWeight.bold,

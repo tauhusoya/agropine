@@ -76,7 +76,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
         // Label
         Text(
           widget.label,
-          style: Theme.of(context).textTheme.titleLarge,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
         ),
         const SizedBox(height: 8),
         // Input Field
@@ -87,6 +90,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           maxLines: widget.isPassword ? 1 : widget.maxLines,
           readOnly: widget.readOnly || !widget.enabled,
           enabled: widget.enabled,
+          style: const TextStyle(fontSize: 14),
           onChanged: (value) {
             _validateField();
             widget.onChanged?.call(value);
@@ -99,6 +103,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           },
           decoration: InputDecoration(
             hintText: widget.hint,
+            hintStyle: const TextStyle(fontSize: 13),
             helperText: widget.helperText,
             prefixIcon: widget.prefixIcon != null
                 ? Icon(widget.prefixIcon)
