@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../services/location_service.dart';
 import '../services/firebase_analytics_service.dart';
 import '../services/analytics_service.dart';
+import '../widgets/vendor_card.dart';
 
 class SellersListPage extends StatefulWidget {
   const SellersListPage({super.key});
@@ -36,82 +37,118 @@ class _SellersListPageState extends State<SellersListPage> {
     {
       'id': '1',
       'name': 'Green Valley Farm',
+      'businessName': 'Green Valley',
       'type': 'Farmer',
       'latitude': 3.1390,
       'longitude': 101.6869,
       'products': ['Fruits', 'Seeds', 'Vegetables'],
       'rating': 4.8,
       'reviews': 156,
+      'phoneNumber': '016-123-4567',
+      'description': 'Fresh organic fruits and vegetables from our farm. We practice sustainable farming methods.',
+      'location': 'Kuala Lumpur',
+      'harvestMonth': 'March',
     },
     {
       'id': '2',
       'name': 'Fresh Harvest Trader',
+      'businessName': 'Fresh Harvest',
       'type': 'Trader',
       'latitude': 3.1425,
       'longitude': 101.6905,
       'products': ['Medication', 'Health'],
       'rating': 4.5,
       'reviews': 89,
+      'phoneNumber': '017-234-5678',
+      'description': 'Quality health and wellness products for you and your family.',
+      'location': 'Petaling Jaya',
     },
     {
       'id': '3',
       'name': 'Organic Seeds Co',
+      'businessName': 'Organic Seeds',
       'type': 'Farmer',
       'latitude': 3.1350,
       'longitude': 101.6820,
       'products': ['Seeds', 'Fruits'],
       'rating': 4.9,
       'reviews': 203,
+      'phoneNumber': '016-345-6789',
+      'description': 'Premium organic seeds for all types of crops. Certified and tested.',
+      'location': 'Shah Alam',
+      'harvestMonth': 'June',
     },
     {
       'id': '4',
       'name': 'Heritage Jam House',
+      'businessName': 'Heritage Jam',
       'type': 'Trader',
       'latitude': 3.1410,
       'longitude': 101.6880,
       'products': ['Jam', 'Health', 'Medication'],
       'rating': 4.7,
       'reviews': 142,
+      'phoneNumber': '012-456-7890',
+      'description': 'Homemade traditional jam made from the finest fruits.',
+      'location': 'Subang',
     },
     {
       'id': '5',
       'name': 'Sunny Citrus Farm',
+      'businessName': 'Sunny Citrus',
       'type': 'Farmer',
       'latitude': 3.1370,
       'longitude': 101.6850,
       'products': ['Fruits', 'Juice'],
       'rating': 4.6,
       'reviews': 98,
+      'phoneNumber': '018-567-8901',
+      'description': 'Fresh citrus fruits delivered to your doorstep daily.',
+      'location': 'Selamat',
+      'harvestMonth': 'May',
     },
     {
       'id': '6',
       'name': 'Wellness Herbs Trader',
+      'businessName': 'Wellness Herbs',
       'type': 'Trader',
       'latitude': 3.1405,
       'longitude': 101.6875,
       'products': ['Health', 'Medication'],
       'rating': 4.9,
       'reviews': 175,
+      'phoneNumber': '017-678-9012',
+      'description': 'Herbal remedies and wellness products for natural healing.',
+      'location': 'Shah Alam',
     },
     {
       'id': '7',
       'name': 'Pineapple Paradise',
+      'businessName': 'Pineapple Paradise',
       'type': 'Farmer',
       'latitude': 3.1385,
       'longitude': 101.6860,
       'products': ['Fruits', 'Seeds', 'Jam'],
       'rating': 5.0,
       'reviews': 289,
+      'phoneNumber': '016-789-0123',
+      'description': 'Award-winning pineapples and pineapple products. Freshly harvested daily.',
+      'location': 'Serdang',
+      'harvestMonth': 'April',
     },
     {
       'id': '8',
       'name': 'Eco Garden Supplier',
+      'businessName': 'Eco Garden',
       'type': 'Trader',
       'latitude': 3.1420,
       'longitude': 101.6890,
       'products': ['Seeds', 'Equipment', 'Vegetables'],
       'rating': 4.4,
       'reviews': 67,
+      'phoneNumber': '012-890-1234',
+      'description': 'Organic gardening supplies and equipment for your garden.',
+      'location': 'Cyberjaya',
     },
   ];
 
@@ -480,172 +517,13 @@ class _SellersListPageState extends State<SellersListPage> {
                               ? LocationService.formatDistance(seller['distance'] as double)
                               : 'N/A';
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.borderColor),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: InkWell(
-                              onTap: () {
-                                _showSellerDetails(seller);
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Header: Name, Type, Distance
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                seller['name'] as String,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyLarge
-                                                    ?.copyWith(
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Row(
-                                                children: [
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme.primaryGold
-                                                          .withValues(alpha: 0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(6),
-                                                    ),
-                                                    child: Text(
-                                                      seller['type'] as String,
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: AppTheme.primaryGold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green
-                                                          .withValues(alpha: 0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(6),
-                                                    ),
-                                                    child: Text(
-                                                      distanceText,
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: Colors.green,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(
-                                                  Icons.star,
-                                                  size: 16,
-                                                  color: Colors.orange,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  (seller['rating'] as num)
-                                                      .toStringAsFixed(1),
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${seller['reviews']} reviews',
-                                              style: const TextStyle(fontSize: 11),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    // Products
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: (seller['products'] as List<String>)
-                                          .take(3)
-                                          .map((product) => Chip(
-                                                label: Text(product),
-                                                backgroundColor: AppTheme.primaryGold
-                                                    .withValues(alpha: 0.1),
-                                                labelStyle: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: AppTheme.primaryGold,
-                                                ),
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 6,
-                                                  vertical: 2,
-                                                ),
-                                              ))
-                                          .toList(),
-                                    ),
-                                    if ((seller['products'] as List<String>).length > 3)
-                                      const SizedBox(height: 6),
-                                    if ((seller['products'] as List<String>).length > 3)
-                                      Text(
-                                        '+${(seller['products'] as List<String>).length - 3} more products',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              color: AppTheme.textLight,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          return VendorCard(
+                            vendor: seller,
+                            distanceText: distanceText,
+                            showHarvestMonth: false,
+                            onTap: () {
+                              _showSellerDetails(seller);
+                            },
                           );
                         }),
                         const SizedBox(height: 80),
@@ -682,26 +560,32 @@ class _SellersListPageState extends State<SellersListPage> {
                 ),
               ),
               const SizedBox(height: 20),
+              // Business Name & Person Name
               Text(
-                seller['name'] as String,
+                seller['businessName'] as String? ?? seller['name'] as String? ?? 'Unknown',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
+              Text(
+                seller['name'] as String? ?? 'Unknown',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textLight,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              // Type & Verification
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryGold.withValues(alpha: 0.1),
+                      color: AppTheme.primaryGold.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      seller['type'] as String,
+                      seller['type'] as String? ?? 'Unknown',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -709,22 +593,107 @@ class _SellersListPageState extends State<SellersListPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 16, color: Colors.orange),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${seller['rating']} (${seller['reviews']} reviews)',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                  const SizedBox(width: 8),
+                  if ((seller['ssmId'] as String?)?.isNotEmpty ?? false)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.green),
                       ),
-                    ],
-                  ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified, size: 14, color: Colors.green),
+                          SizedBox(width: 4),
+                          Text(
+                            'Verified',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              // Description
+              Text(
+                seller['description'] as String? ?? '',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textLight,
+                      height: 1.4,
+                    ),
               ),
               const SizedBox(height: 20),
               const Divider(),
               const SizedBox(height: 12),
+              // Location & Distance
+              if (seller['location'] != null && (seller['location'] as String).isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 16, color: AppTheme.primaryGold),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            seller['location'] as String,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (seller['distance'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 24),
+                            Text(
+                              LocationService.formatDistance(seller['distance'] as double),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              // Phone Number
+              if (seller['phoneNumber'] != null && (seller['phoneNumber'] as String).isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.phone, size: 16, color: AppTheme.primaryGold),
+                        const SizedBox(width: 8),
+                        Text(
+                          seller['phoneNumber'] as String,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              const Divider(),
+              const SizedBox(height: 12),
+              // Products
               Text(
                 'Products & Services',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -735,17 +704,27 @@ class _SellersListPageState extends State<SellersListPage> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: (seller['products'] as List<String>)
-                    .map((product) => Chip(
-                          label: Text(product),
-                          backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.1),
-                          labelStyle: const TextStyle(
-                            color: AppTheme.primaryGold,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ))
-                    .toList(),
+                children: (seller['products'] as List<String>?)?.take(4).map((product) => Chip(
+                      label: Text(product),
+                      backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.1),
+                      labelStyle: const TextStyle(
+                        color: AppTheme.primaryGold,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ))
+                    .toList() ?? [],
               ),
+              if (((seller['products'] as List<String>?)?.length ?? 0) > 4)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '+${(seller['products'] as List<String>).length - 4} more products',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textLight,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -775,6 +754,7 @@ class _SellersListPageState extends State<SellersListPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),

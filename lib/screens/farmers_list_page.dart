@@ -54,6 +54,7 @@ class _FarmersListPageState extends State<FarmersListPage> {
       'phoneNumber': '016-123-4567',
       'description': 'Fresh organic fruits and vegetables from our farm. We practice sustainable farming methods.',
       'location': 'Kuala Lumpur',
+      'harvestMonth': 'March',
     },
     {
       'id': '2',
@@ -82,6 +83,7 @@ class _FarmersListPageState extends State<FarmersListPage> {
       'phoneNumber': '016-345-6789',
       'description': 'Premium organic seeds for all types of crops. Certified and tested.',
       'location': 'Shah Alam',
+      'harvestMonth': 'June',
     },
     {
       'id': '4',
@@ -110,6 +112,7 @@ class _FarmersListPageState extends State<FarmersListPage> {
       'phoneNumber': '016-567-8901',
       'description': 'Fresh citrus fruits and natural juices from our orchard.',
       'location': 'Damansara',
+      'harvestMonth': 'May',
     },
     {
       'id': '6',
@@ -138,6 +141,7 @@ class _FarmersListPageState extends State<FarmersListPage> {
       'phoneNumber': '016-789-0123',
       'description': 'Award-winning pineapples and pineapple products. Freshly harvested daily.',
       'location': 'Serdang',
+      'harvestMonth': 'April',
     },
     {
       'id': '8',
@@ -718,15 +722,158 @@ class _FarmersListPageState extends State<FarmersListPage> {
                 ),
               ),
               const SizedBox(height: 20),
+              // Business Name & Person Name
               Text(
-                farmer['name'] as String,
+                farmer['businessName'] as String? ?? farmer['name'] as String? ?? 'Unknown',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                farmer['name'] as String? ?? 'Unknown',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textLight,
+                    ),
+              ),
               const SizedBox(height: 12),
+              // Type & Verification
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      farmer['type'] as String? ?? 'Unknown',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryGold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if ((farmer['ssmId'] as String?)?.isNotEmpty ?? false)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.green),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified, size: 14, color: Colors.green),
+                          SizedBox(width: 4),
+                          Text(
+                            'Verified',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Description
+              Text(
+                farmer['description'] as String? ?? '',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textLight,
+                      height: 1.4,
+                    ),
+              ),
+              const SizedBox(height: 20),
               const Divider(),
               const SizedBox(height: 12),
+              // Location & Distance
+              if (farmer['location'] != null && (farmer['location'] as String).isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 16, color: AppTheme.primaryGold),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            farmer['location'] as String,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const SizedBox(width: 24),
+                        Text(
+                          distance > 0 ? LocationService.formatDistance(distance) : 'N/A',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              // Phone Number
+              if (farmer['phoneNumber'] != null && (farmer['phoneNumber'] as String).isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.phone, size: 16, color: AppTheme.primaryGold),
+                        const SizedBox(width: 8),
+                        Text(
+                          farmer['phoneNumber'] as String,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              // Harvest Month
+              if (farmer['harvestMonth'] != null && (farmer['harvestMonth'] as String).isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 16, color: AppTheme.primaryGold),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Harvest: ${farmer['harvestMonth']}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryGold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              const Divider(),
+              const SizedBox(height: 12),
+              // Products
               Text(
                 'Products & Services',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -737,17 +884,27 @@ class _FarmersListPageState extends State<FarmersListPage> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: (farmer['products'] as List<String>)
-                    .map((product) => Chip(
-                          label: Text(product),
-                          backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.1),
-                          labelStyle: const TextStyle(
-                            color: AppTheme.primaryGold,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ))
-                    .toList(),
+                children: (farmer['products'] as List<String>?)?.take(4).map((product) => Chip(
+                      label: Text(product),
+                      backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.1),
+                      labelStyle: const TextStyle(
+                        color: AppTheme.primaryGold,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ))
+                    .toList() ?? [],
               ),
+              if (((farmer['products'] as List<String>?)?.length ?? 0) > 4)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '+${(farmer['products'] as List<String>).length - 4} more products',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textLight,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -769,7 +926,7 @@ class _FarmersListPageState extends State<FarmersListPage> {
                     );
                   },
                   child: const Text(
-                    'View Profile',
+                    'Contact Farmer',
                     style: TextStyle(
                       color: AppTheme.textDark,
                       fontWeight: FontWeight.bold,
@@ -777,6 +934,7 @@ class _FarmersListPageState extends State<FarmersListPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),

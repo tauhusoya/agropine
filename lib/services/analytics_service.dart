@@ -9,6 +9,13 @@ class AnalyticsService {
 
   /// Initialize crash reporting
   static Future<void> initCrashReporting() async {
+    // Skip Crashlytics initialization on web platform
+    // Web has limited Crashlytics support and causes initialization errors
+    if (kIsWeb) {
+      debugPrint('⚠ Analytics: Skipping Crashlytics initialization on web platform');
+      return;
+    }
+
     if (kDebugMode) {
       // Force disable Crashlytics collection while doing every day development.
       // Temporarily disable collection to let you modify the app and test APIs.
