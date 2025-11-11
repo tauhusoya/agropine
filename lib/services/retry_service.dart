@@ -27,12 +27,12 @@ class RetryService {
 
         // Check if we should retry this specific exception
         if (shouldRetry != null && !shouldRetry(e)) {
-          throw e;
+          rethrow;
         }
 
         // If this was the last attempt, throw the exception
         if (attempt >= maxAttempts) {
-          throw e;
+          rethrow;
         }
 
         // Print retry attempt

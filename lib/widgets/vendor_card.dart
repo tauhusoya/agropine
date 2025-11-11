@@ -39,119 +39,382 @@ class VendorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Profile section with picture, name, and verification badge
-                _buildProfileSection(context),
-                const SizedBox(height: 12),
+                // SECTION 1: Profile Header (Picture + Info)
+                _buildHeaderSection(context),
+                const SizedBox(height: 14),
 
-                // Location and phone side by side
-                if ((_businessLocation != null && _businessLocation!.isNotEmpty) ||
-                    (_phoneNumber != null && _phoneNumber!.isNotEmpty))
-                  _buildLocationAndPhoneRow(),
-                if ((_businessLocation != null && _businessLocation!.isNotEmpty) ||
-                    (_phoneNumber != null && _phoneNumber!.isNotEmpty))
-                  const SizedBox(height: 10),
+                // SECTION 2 & 3: Contact Info and Harvest (Responsive - Side by side on web, stacked on mobile)
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 600;
+                    
+                    if (isMobile) {
+                      // Mobile: Stack vertically
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Contact info
+                          if ((_businessLocation != null && _businessLocation!.isNotEmpty) ||
+                              (_phoneNumber != null && _phoneNumber!.isNotEmpty))
+                            _buildContactSection(),
+                          // Harvest month
+                          if ((vendor['type'] as String?) == 'Farmer' &&
+                              _harvestMonth != null &&
+                              _harvestMonth!.isNotEmpty)
+                            const SizedBox(height: 12),
+                          if ((vendor['type'] as String?) == 'Farmer' &&
+                              _harvestMonth != null &&
+                              _harvestMonth!.isNotEmpty)
+                            _buildHarvestSection(),
+                        ],
+                      );
+                    } else {
+                      // Web/Tablet: Side by side
+                      return IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Contact info (location + phone)
+                            if ((_businessLocation != null && _businessLocation!.isNotEmpty) ||
+                                (_phoneNumber != null && _phoneNumber!.isNotEmpty))
+                              Expanded(
+                                flex: 2,
+                                child: _buildContactSection(),
+                              ),
+                            // Harvest month
+                            if ((vendor['type'] as String?) == 'Farmer' &&
+                                _harvestMonth != null &&
+                                _harvestMonth!.isNotEmpty)
+                              const SizedBox(width: 12),
+                            if ((vendor['type'] as String?) == 'Farmer' &&
+                                _harvestMonth != null &&
+                                _harvestMonth!.isNotEmpty)
+                              Expanded(
+                                flex: 1,
+                                child: _buildHarvestSection(),
+                              ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                ),
+                if (((_businessLocation != null && _businessLocation!.isNotEmpty) ||
+                        (_phoneNumber != null && _phoneNumber!.isNotEmpty)) ||
+                    ((vendor['type'] as String?) == 'Farmer' &&
+                        _harvestMonth != null &&
+                        _harvestMonth!.isNotEmpty))
+                  const SizedBox(height: 12),
 
-                // Harvest month (farmers only)
-                if (showHarvestMonth && _harvestMonth != null)
-                  _buildHarvestMonthRow(),
-                if (showHarvestMonth && _harvestMonth != null)
-                  const SizedBox(height: 10),
-
-                // Products pills at bottom
-                if (_products.isNotEmpty) _buildProductsPills(),
+                // SECTION 4: Products
+                if (_products.isNotEmpty) _buildProductsSection(),
               ],
             ),
           ),
         ),
-      ),
     );
   }
 
-  /// Build profile section with picture, name, type, and verification badge
-  Widget _buildProfileSection(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  /// SECTION 1: Header with profile picture and vendor info
+  Widget _buildHeaderSection(BuildContext context) {
+    return Stack(
       children: [
-        // Profile picture
-        _buildProfilePicture(),
-        const SizedBox(width: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile picture (fixed size)
+            _buildProfilePicture(),
+            const SizedBox(width: 12),
 
-        // Business name, person name, description, and verification badge
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Business name (top)
-              Text(
-                vendor['businessName'] as String? ?? vendor['name'] as String? ?? 'Unknown',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-
-              // Person name (below business name)
-              Row(
+            // Vendor info (name, type, description)
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Text(
-                      vendor['name'] as String? ?? 'Unknown',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  // Business name
+                  Text(
+                    vendor['businessName'] as String? ??
+                        vendor['name'] as String? ??
+                        'Unknown',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textDark,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+
+                  // Person name + Type badge in one row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          vendor['name'] as String? ?? 'Unknown',
+                          style: const TextStyle(
                             fontSize: 11,
                             color: AppTheme.textLight,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Type badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          vendor['type'] as String? ?? 'Unknown',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.primaryGold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Description
+                  Text(
+                    vendor['description'] as String? ?? '',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textLight,
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        // Verification badge - Top right
+        if (_isVerified)
+          Positioned(
+            top: 0,
+            right: 0,
+            child: _buildVerificationBadge(),
+          ),
+      ],
+    );
+  }
+
+  /// SECTION 2: Contact info (Location + Distance + Phone)
+  Widget _buildContactSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Location row
+          if (_businessLocation != null && _businessLocation!.isNotEmpty)
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  size: 14,
+                  color: AppTheme.primaryGold,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _businessLocation!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textDark,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        distanceText,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          // Phone row
+          if (_phoneNumber != null && _phoneNumber!.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(
+                top: _businessLocation != null &&
+                        _businessLocation!.isNotEmpty
+                    ? 8
+                    : 0,
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.phone,
+                    size: 14,
+                    color: AppTheme.primaryGold,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _phoneNumber!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textDark,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (_isVerified) const SizedBox(width: 6),
-                  if (_isVerified) _buildVerificationBadge(),
                 ],
               ),
-              const SizedBox(height: 6),
+            ),
+        ],
+      ),
+    );
+  }
 
-              // Description
-              Text(
-                vendor['description'] as String? ?? '',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.textLight,
-                  height: 1.3,
+  /// SECTION 3: Harvest month (farmers only)
+  Widget _buildHarvestSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryGold.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.calendar_today,
+                size: 14,
+                color: AppTheme.primaryGold,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Harvest: $_harvestMonth',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryGold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  /// SECTION 4: Products/Categories
+  Widget _buildProductsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            'Products',
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textLight,
+            ),
+          ),
         ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: _products
+              .take(4)
+              .map((product) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGold.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: AppTheme.primaryGold.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      product,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.primaryGold,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ))
+              .toList(),
+        ),
+        if (_products.length > 4)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              '+${_products.length - 4} more product${_products.length - 4 > 1 ? 's' : ''}',
+              style: const TextStyle(
+                fontSize: 9,
+                color: AppTheme.textLight,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -216,144 +479,6 @@ class VendorCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  /// Build location and phone side by side
-  Widget _buildLocationAndPhoneRow() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Location
-        if (_businessLocation != null && _businessLocation!.isNotEmpty)
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.location_on,
-                  size: 16,
-                  color: AppTheme.textLight,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    '$_businessLocation • $distanceText',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.textLight,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        if (_businessLocation != null &&
-            _businessLocation!.isNotEmpty &&
-            _phoneNumber != null &&
-            _phoneNumber!.isNotEmpty)
-          const SizedBox(width: 12),
-        // Phone
-        if (_phoneNumber != null && _phoneNumber!.isNotEmpty)
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.phone,
-                  size: 16,
-                  color: AppTheme.textLight,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    _phoneNumber ?? '',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.textLight,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// Build harvest month row (for farmers only)
-  Widget _buildHarvestMonthRow() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.calendar_today,
-          size: 16,
-          color: AppTheme.primaryGold,
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'Harvest: $_harvestMonth',
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppTheme.primaryGold,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Build products pills
-  Widget _buildProductsPills() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 6,
-          runSpacing: 4,
-          children: _products
-              .take(3)
-              .map((product) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGold.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.primaryGold.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      product,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.primaryGold,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ))
-              .toList(),
-        ),
-        if (_products.length > 3)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              '+${_products.length - 3} more product${_products.length - 3 > 1 ? 's' : ''}',
-              style: const TextStyle(
-                fontSize: 10,
-                color: AppTheme.textLight,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-      ],
     );
   }
 }

@@ -66,6 +66,7 @@ class _DashboardPageState extends State<DashboardPage> {
       'phoneNumber': '016-123-4567',
       'description': 'Fresh organic fruits and vegetables from our farm. We practice sustainable farming methods.',
       'location': 'Kuala Lumpur',
+      'harvestMonth': 'March',
     },
     {
       'id': '2',
@@ -94,6 +95,7 @@ class _DashboardPageState extends State<DashboardPage> {
       'phoneNumber': '016-345-6789',
       'description': 'Premium organic seeds for all types of crops. Certified and tested.',
       'location': 'Shah Alam',
+      'harvestMonth': 'June',
     },
     {
       'id': '4',
@@ -358,15 +360,160 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               const SizedBox(height: 20),
+              // Business Name & Person Name
               Text(
-                vendor['name'] as String,
+                vendor['businessName'] as String? ?? vendor['name'] as String? ?? 'Unknown',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                vendor['name'] as String? ?? 'Unknown',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textLight,
+                    ),
+              ),
               const SizedBox(height: 12),
+              // Type & Verification
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      vendor['type'] as String? ?? 'Unknown',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryGold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if ((vendor['ssmId'] as String?)?.isNotEmpty ?? false)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.green),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified, size: 14, color: Colors.green),
+                          SizedBox(width: 4),
+                          Text(
+                            'Verified',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Description
+              Text(
+                vendor['description'] as String? ?? '',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textLight,
+                      height: 1.4,
+                    ),
+              ),
+              const SizedBox(height: 20),
               const Divider(),
               const SizedBox(height: 12),
+              // Location & Distance
+              if (vendor['location'] != null && (vendor['location'] as String).isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 16, color: AppTheme.primaryGold),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            vendor['location'] as String,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const SizedBox(width: 24),
+                        Text(
+                          vendor['distance'] != null ? LocationService.formatDistance(vendor['distance'] as double) : 'N/A',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              // Phone Number
+              if (vendor['phoneNumber'] != null && (vendor['phoneNumber'] as String).isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.phone, size: 16, color: AppTheme.primaryGold),
+                        const SizedBox(width: 8),
+                        Text(
+                          vendor['phoneNumber'] as String,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              // Harvest Month (Farmers only)
+              if ((vendor['type'] as String?) == 'Farmer' &&
+                  vendor['harvestMonth'] != null &&
+                  (vendor['harvestMonth'] as String).isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 16, color: AppTheme.primaryGold),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Harvest: ${vendor['harvestMonth']}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryGold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              const Divider(),
+              const SizedBox(height: 12),
+              // Products
               Text(
                 'Products & Services',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -377,17 +524,27 @@ class _DashboardPageState extends State<DashboardPage> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: (vendor['products'] as List<String>)
-                    .map((product) => Chip(
-                          label: Text(product),
-                          backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.1),
-                          labelStyle: const TextStyle(
-                            color: AppTheme.primaryGold,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ))
-                    .toList(),
+                children: (vendor['products'] as List<String>?)?.take(4).map((product) => Chip(
+                      label: Text(product),
+                      backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.1),
+                      labelStyle: const TextStyle(
+                        color: AppTheme.primaryGold,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ))
+                    .toList() ?? [],
               ),
+              if (((vendor['products'] as List<String>?)?.length ?? 0) > 4)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '+${(vendor['products'] as List<String>).length - 4} more products',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textLight,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -409,7 +566,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     );
                   },
                   child: const Text(
-                    'View Profile',
+                    'Contact Vendor',
                     style: TextStyle(
                       color: AppTheme.textDark,
                       fontWeight: FontWeight.bold,
@@ -417,6 +574,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -585,10 +743,12 @@ class _DashboardPageState extends State<DashboardPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Nearby Farmers & Traders',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      'Nearby Farmers & Traders',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
